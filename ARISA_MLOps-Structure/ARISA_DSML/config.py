@@ -11,8 +11,9 @@ load_dotenv()
 PROJ_ROOT = Path(__file__).resolve().parents[1]
 logger.info(f"PROJ_ROOT path is: {PROJ_ROOT}")
 
-DATASET = "cholesterol"  # original dataset
-DATASET_TEST = "test/predict_cholesterol"  # test set augmented with target labels
+DATASET = "cholesterol-supplementation-classification"  # original dataset
+DATASET_TEST = "cholesterol-supplementation-classification"
+# test set augmented with target labels
 
 DATA_DIR = PROJ_ROOT / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
@@ -32,7 +33,8 @@ categorical = [
     "Physical_Activity",
     "Dietary_Habits",
     "Family_History",
-    "id",
 ]
+
+
 
 target = "Need_Supplement"
