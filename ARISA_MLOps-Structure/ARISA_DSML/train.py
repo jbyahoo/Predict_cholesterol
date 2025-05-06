@@ -70,6 +70,139 @@ def run_hyperopt(X_train: pd.DataFrame, y_train: pd.DataFrame, test_size: float 
     return best_params_path
 
 
+def train(
+    X_train: pd.DataFrame,
+    y_train: pd.DataFrame,
+    params: dict | None,
+    artifact_name: str = "catboost_model_cholesterol",
+    cv_results=None,
+) -> tuple[str | Path]:
+    """Train model on full dataset without cross-validation."""
+    if params is None:
+        logger.info("Training model without tuned hyperparameters")
+        params = {}
+
+    # Remove any non-CatBoost params if present
+    params = {k: v for k, v in params.items() if k not in ["feature_columns"]}
+
+    with mlflow.start_run():
+        model = CatBoostClassifier(
+            **params,
+            verbose=True,
+        )
+
+        model.fit(
+            X_train,
+            y_train,
+            verbose_eval=50,
+            early_stopping_rounds=50,
+            use_best_model=False,
+            plot=True,
+        )
+
+        mlflow.log_params(params)
+        mlflow.log_param("feature_columns", list(X_train.columns))
+
+        MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
+        model_path = MODELS_DIR / f"{artifact_name}.cbm"
+        model.save_model(model_path)
+        mlflow.log_artifact(model_path)
+
+        # Defensive logging and plotting for cv_results
+        if isinstance(cv_results, pd.DataFrame):
+            required_cols_f1 = {"test-F1-mean"}
+            required_cols_logloss = {"iterations", "test-Logloss-mean", "test-Logloss-std"}
+            if required_cols_f1.issubset(cv_results.columns):
+                cv_metric_mean = cv_results["test-F1-mean"].mean()
+                mlflow.log_metric("f1_cv_mean", cv_metric_mean)
+            else:
+                logger.warning("cv_results missing required F1 columns for metric logging.")
+            # Plot F1
+            if {"iterations", "test-F1-mean", "test-F1-std"}.issubset(cv_results.columns):
+                fig1 = plot_error_scatter(
+                    df_plot=cv_results,
+                    name="Mean F1 Score",
+                    title="Cross-Validation (N=5) Mean F1 score with Error Bands",
+                    xtitle="Training Steps",
+                    ytitle="Performance Score",
+                    yaxis_range=[0.5, 1.0],
+                )
+                mlflow.log_figure(fig1, "test-F1-mean_vs_iterations.png")
+            else:
+                logger.warning("cv_results missing required columns for F1 plot.")
+            # Plot Logloss
+            if required_cols_logloss.issubset(cv_results.columns):
+                fig2 = plot_error_scatter(
+                    cv_results,
+                    x="iterations",
+                    y="test-Logloss-mean",
+                    err="test-Logloss-std",
+                    name="Mean logloss",
+                    title="Cross-Validation (N=5) Mean Logloss with Error Bands",
+                    xtitle="Training Steps",
+                    ytitle="Logloss",
+                )
+                mlflow.log_figure(fig2, "test-logloss-mean_vs_iterations.png")
+            else:
+                logger.warning("cv_results missing required columns for Logloss plot.")
+        else:
+            logger.warning("cv_results is not a DataFrame. Skipping cv metrics and plots.")
+
+        # Log the model
+        model_info = mlflow.catboost.log_model(
+            cb_model=model,
+            artifact_path="model",
+            input_example=X_train,
+            registered_model_name=MODEL_NAME,
+        )
+        client = MlflowClient(mlflow.get_tracking_uri())
+        model_info = client.get_latest_versions(MODEL_NAME)[0]
+        client.set_registered_model_alias(MODEL_NAME, "challenger", model_info.version)
+        client.set_model_version_tag(
+            name=model_info.name,
+            version=model_info.version,
+            key="git_sha",
+            value=get_git_commit_hash(),
+        )
+        model_params_path = MODELS_DIR / "model_params.pkl"
+        joblib.dump(params, model_params_path)
+
+        # ----------NannyML----------
+        reference_df = X_train.copy()
+        reference_df["prediction"] = model.predict(X_train)
+        reference_df["predicted_probability"] = [p[1] for p in model.predict_proba(X_train)]
+        reference_df[target] = y_train
+        chunk_size = 50
+
+        # univariate drift for features
+        udc = nml.UnivariateDriftCalculator(
+            column_names=[col for col in X_train.columns if col != "PassengerId"],
+            chunk_size=chunk_size,
+        )
+        udc.fit(reference_df.drop(columns=["prediction", target, "predicted_probability"], errors="ignore"))
+
+        # Confidence-based Performance Estimation for target
+        estimator = nml.CBPE(
+            problem_type="classification_binary",
+            y_pred_proba="predicted_probability",
+            y_pred="prediction",
+            y_true=target,
+            metrics=["roc_auc"],
+            chunk_size=chunk_size,
+        )
+        estimator = estimator.fit(reference_df)
+
+        store = nml.io.store.FilesystemStore(root_path=str(MODELS_DIR))
+        store.store(udc, filename="udc.pkl")
+        store.store(estimator, filename="estimator.pkl")
+
+        mlflow.log_artifact(MODELS_DIR / "udc.pkl")
+        mlflow.log_artifact(MODELS_DIR / "estimator.pkl")
+
+    return (model_path, model_params_path)
+
+
 def train_cv(X_train: pd.DataFrame, y_train: pd.DataFrame, params: dict, eval_metric: str = "F1", n: int = 5) -> str | Path:
     """Do cross-validated training."""
     params["eval_metric"] = eval_metric
@@ -91,115 +224,6 @@ def train_cv(X_train: pd.DataFrame, y_train: pd.DataFrame, params: dict, eval_me
     cv_results.to_csv(cv_output_path, index=False)
 
     return cv_output_path
-
-
-def train(X_train: pd.DataFrame, y_train: pd.DataFrame,
-          params: dict | None, artifact_name: str = "catboost_model_titanic", cv_results=None,
-          ) -> tuple[str | Path]:
-    """Train model on full dataset without cross-validation."""
-    if params is None:
-        logger.info("Training model without tuned hyperparameters")
-        params = {}
-    with mlflow.start_run():
-
-        model = CatBoostClassifier(
-            **params,
-            verbose=True,
-        )
-
-        model.fit(
-            X_train,
-            y_train,
-            verbose_eval=50,
-            early_stopping_rounds=50,
-            use_best_model=False,
-            plot=True,
-        )
-        params["feature_columns"] = X_train.columns
-        mlflow.log_params(params)
-
-        MODELS_DIR.mkdir(parents=True, exist_ok=True)
-
-        model_path = MODELS_DIR / f"{artifact_name}.cbm"
-        model.save_model(model_path)
-        mlflow.log_artifact(model_path)
-        cv_metric_mean = cv_results["test-F1-mean"].mean()
-        mlflow.log_metric("f1_cv_mean", cv_metric_mean)
-
-        # Log the model
-        model_info = mlflow.catboost.log_model(
-            cb_model=model,
-            artifact_path="model",
-            input_example=X_train,
-            registered_model_name=MODEL_NAME,
-        )
-        client = MlflowClient(mlflow.get_tracking_uri())
-        model_info = client.get_latest_versions(MODEL_NAME)[0]
-        client.set_registered_model_alias(MODEL_NAME, "challenger", model_info.version)
-        client.set_model_version_tag(
-            name=model_info.name,
-            version=model_info.version,
-            key="git_sha",
-            value=get_git_commit_hash(),
-        )
-        model_params_path = MODELS_DIR / "model_params.pkl"
-        joblib.dump(params, model_params_path)
-        fig1 = plot_error_scatter(
-            df_plot=cv_results,
-            name="Mean F1 Score",
-            title="Cross-Validation (N=5) Mean F1 score with Error Bands",
-            xtitle="Training Steps",
-            ytitle="Performance Score",
-            yaxis_range=[0.5, 1.0],
-        )
-        mlflow.log_figure(fig1, "test-F1-mean_vs_iterations.png")
-        fig2 = plot_error_scatter(
-            cv_results,
-            x="iterations",
-            y="test-Logloss-mean",
-            err="test-Logloss-std",
-            name="Mean logloss",
-            title="Cross-Validation (N=5) Mean Logloss with Error Bands",
-            xtitle="Training Steps",
-            ytitle="Logloss",
-        )
-        mlflow.log_figure(fig2, "test-logloss-mean_vs_iterations.png")
-
-        """----------NannyML----------"""
-        # Model monitoring initialization
-        reference_df = X_train.copy()
-        reference_df["prediction"] = model.predict(X_train)
-        reference_df["predicted_probability"] = [p[1] for p in model.predict_proba(X_train)]
-        reference_df[target] = y_train
-#        col_names = reference_df.drop(columns=["prediction", target, "predicted_probability"]).columns
-        chunk_size = 50
-
-        # univariate drift for features
-        udc = nml.UnivariateDriftCalculator(
-            column_names=X_train.drop("PassengerId", axis=1).columns,
-            chunk_size=chunk_size,
-        )
-        udc.fit(reference_df.drop(columns=["prediction", target, "predicted_probability"]))
-
-        # Confidence-based Performance Estimation for target
-        estimator = nml.CBPE(
-            problem_type="classification_binary",
-            y_pred_proba="predicted_probability",
-            y_pred="prediction",
-            y_true=target,
-            metrics=["roc_auc"],
-            chunk_size=chunk_size,
-        )
-        estimator = estimator.fit(reference_df)
-
-        store = nml.io.store.FilesystemStore(root_path=str(MODELS_DIR))
-        store.store(udc, filename="udc.pkl")
-        store.store(estimator, filename="estimator.pkl")
-
-        mlflow.log_artifact(MODELS_DIR / "udc.pkl")
-        mlflow.log_artifact(MODELS_DIR / "estimator.pkl")
-
-    return (model_path, model_params_path)
 
 
 def plot_error_scatter(
@@ -313,14 +337,14 @@ if __name__ == "__main__":
     y_train = df_train.pop(target)
     X_train = df_train
 
-    experiment_id = get_or_create_experiment("titanic_hyperparam_tuning")
+    experiment_id = get_or_create_experiment("cholesterol_hyperparam_tuning")
     mlflow.set_experiment(experiment_id=experiment_id)
     best_params_path = run_hyperopt(X_train, y_train)
     params = joblib.load(best_params_path)
     cv_output_path = train_cv(X_train, y_train, params)
     cv_results = pd.read_csv(cv_output_path)
 
-    experiment_id = get_or_create_experiment("titanic_full_training")
+    experiment_id = get_or_create_experiment("cholesterol_full_training")
     mlflow.set_experiment(experiment_id=experiment_id)
     model_path, model_params_path = train(X_train, y_train, params, cv_results=cv_results)
 
