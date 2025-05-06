@@ -35,6 +35,4 @@ categorical = [
     "Family_History",
 ]
 
-
-
 target = "Need_Supplement"

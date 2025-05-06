@@ -1,4 +1,3 @@
-"""Functions to train model."""
 from pathlib import Path
 
 from catboost import CatBoostClassifier, Pool, cv
@@ -17,7 +16,6 @@ from ARISA_DSML.config import (
     MODEL_NAME,
     MODELS_DIR,
     PROCESSED_DATA_DIR,
-    categorical,
     target,
 )
 from ARISA_DSML.helpers import get_git_commit_hash
@@ -26,13 +24,13 @@ import nannyml as nml
 
 # comment to trigger workflow ver6
 
-def run_hyperopt(X_train:pd.DataFrame, y_train:pd.DataFrame, test_size:float=0.25, n_trials:int=20, overwrite:bool=False)->str|Path: 
+def run_hyperopt(X_train: pd.DataFrame, y_train: pd.DataFrame, test_size: float = 0.25, n_trials: int = 20, overwrite: bool = False) -> str | Path:
     """Run optuna hyperparameter tuning."""
     best_params_path = MODELS_DIR / "best_params.pkl"
     if not best_params_path.is_file() or overwrite:
         X_train_opt, X_val_opt, y_train_opt, y_val_opt = train_test_split(X_train, y_train, test_size=test_size, random_state=42)
 
-        def objective(trial:optuna.trial.Trial)->float:
+        def objective(trial: optuna.trial.Trial) -> float:
             with mlflow.start_run(nested=True):
                 params = {
                     "depth": trial.suggest_int("depth", 2, 10),
@@ -72,7 +70,7 @@ def run_hyperopt(X_train:pd.DataFrame, y_train:pd.DataFrame, test_size:float=0.2
     return best_params_path
 
 
-def train_cv(X_train:pd.DataFrame, y_train:pd.DataFrame, params:dict, eval_metric:str="F1", n:int=5)->str|Path:
+def train_cv(X_train: pd.DataFrame, y_train: pd.DataFrame, params: dict, eval_metric: str = "F1", n: int = 5) -> str | Path:
     """Do cross-validated training."""
     params["eval_metric"] = eval_metric
     params["loss_function"] = "Logloss"
@@ -95,9 +93,9 @@ def train_cv(X_train:pd.DataFrame, y_train:pd.DataFrame, params:dict, eval_metri
     return cv_output_path
 
 
-def train(X_train:pd.DataFrame, y_train:pd.DataFrame,
-          params:dict|None, artifact_name:str="catboost_model_titanic", cv_results=None,
-          )->tuple[str|Path]:
+def train(X_train: pd.DataFrame, y_train: pd.DataFrame,
+          params: dict | None, artifact_name: str = "catboost_model_titanic", cv_results=None,
+          ) -> tuple[str | Path]:
     """Train model on full dataset without cross-validation."""
     if params is None:
         logger.info("Training model without tuned hyperparameters")
@@ -166,14 +164,14 @@ def train(X_train:pd.DataFrame, y_train:pd.DataFrame,
             ytitle="Logloss",
         )
         mlflow.log_figure(fig2, "test-logloss-mean_vs_iterations.png")
-        
+
         """----------NannyML----------"""
         # Model monitoring initialization
         reference_df = X_train.copy()
         reference_df["prediction"] = model.predict(X_train)
         reference_df["predicted_probability"] = [p[1] for p in model.predict_proba(X_train)]
         reference_df[target] = y_train
-        col_names = reference_df.drop(columns=["prediction", target, "predicted_probability"]).columns
+#        col_names = reference_df.drop(columns=["prediction", target, "predicted_probability"]).columns
         chunk_size = 50
 
         # univariate drift for features
@@ -197,26 +195,24 @@ def train(X_train:pd.DataFrame, y_train:pd.DataFrame,
         store = nml.io.store.FilesystemStore(root_path=str(MODELS_DIR))
         store.store(udc, filename="udc.pkl")
         store.store(estimator, filename="estimator.pkl")
-        
+
         mlflow.log_artifact(MODELS_DIR / "udc.pkl")
         mlflow.log_artifact(MODELS_DIR / "estimator.pkl")
-        
-
 
     return (model_path, model_params_path)
 
 
-def plot_error_scatter( 
-        df_plot:pd.DataFrame,
-        x:str="iterations",
-        y:str="test-F1-mean",
-        err:str="test-F1-std",
-        name:str="",
-        title:str="",
-        xtitle:str="",
-        ytitle:str="",
-        yaxis_range:list[float]|None=None,
-    )->None:
+def plot_error_scatter(
+        df_plot: pd.DataFrame,
+        x: str = "iterations",
+        y: str = "test-F1-mean",
+        err: str = "test-F1-std",
+        name: str = "",
+        title: str = "",
+        xtitle: str = "",
+        ytitle: str = "",
+        yaxis_range: list[float] | None = None,
+) -> None:
     """Plot plotly scatter plots with error areas."""
     # Create figure
     fig = go.Figure()
@@ -234,12 +230,12 @@ def plot_error_scatter(
     # Add shaded error region
     fig.add_trace(
         go.Scatter(
-            x=pd.concat([df_plot[y], df_plot[x][::-1]]),
-            y=pd.concat([df_plot[y]+df_plot[err],
-                         df_plot[y]-df_plot[err]]),
+            x=pd.concat([df_plot[y], df_plot[x][:: -1]]),
+            y=pd.concat([df_plot[y] + df_plot[err],
+                         df_plot[y] - df_plot[err]]),
             fill="toself",
             fillcolor="rgba(0, 0, 255, 0.2)",
-            line={"color":"rgba(255, 255, 255, 0)"},
+            line={"color": "rgba(255, 255, 255, 0)"},
             showlegend=False,
         ),
     )
@@ -262,7 +258,7 @@ def plot_error_scatter(
     return fig
 
 
-def get_or_create_experiment(experiment_name:str):
+def get_or_create_experiment(experiment_name: str):
     """Retrieve the ID of an existing MLflow experiment or create a new one if it doesn't exist.
 
     This function checks if an experiment with the given name exists within MLflow.
@@ -310,7 +306,7 @@ def get_or_create_experiment(experiment_name:str):
 #             print(f"Initial trial {frozen_trial.number} achieved value: {frozen_trial.value}")
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     # for running in workflow in actions again again
     df_train = pd.read_csv(PROCESSED_DATA_DIR / "train.csv")
 

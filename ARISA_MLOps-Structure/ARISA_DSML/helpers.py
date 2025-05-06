@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
 
+
 def get_active_branch_name(wd="."):
 
     head_dir = Path(wd) / ".git" / "HEAD"
