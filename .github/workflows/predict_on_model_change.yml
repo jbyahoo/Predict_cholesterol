@@ -1,16 +1,15 @@
-name: Preproc data and train model
+name: Predict on new data or with new model
 
 on: 
   push:
     branches:
       - main
-    paths:  # (re)train when train data changes or when the preproc or train code changes
-      - 'data/raw/train.csv'
-      - 'data/processed/train.csv'
-      - 'ARISA_DSML/preproc.py'
-      - 'ARISA_DSML/train.py'
-      - 'models/best_params.pkl'  # model should also be retrained after hyperparam tuning is run
-
+    paths:  # predict when the test set has changed, as well as when the model artifact is updated
+      - 'data/raw/test.csv'
+      - 'data/processed/test.csv'
+      - 'ARISA_DSML/predict.py'
+      - 'models/catboost_model_titanic.cbm'
+  workflow_dispatch:  # Allows manual triggering from the train workflow
 jobs:
   preprocess:
     runs-on: ubuntu-latest
@@ -33,20 +32,21 @@ jobs:
           chmod 600 $HOME/.config/kaggle/kaggle.json
       - name: Run preprocessing
         run: make preprocess
+
       - name: Upload preprocessed data
         uses: actions/upload-artifact@v4
         with:
           name: processed-data
           path: data/processed
-  train:
+  predict:
     runs-on: ubuntu-latest
     needs: preprocess
     permissions:
       contents: write  # This gives the token write access to the repository contents
-      actions: write   # ✅ Allows triggering other workflows!
     steps: 
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Download processed data
         uses: actions/download-artifact@v4
         with:
@@ -58,35 +58,32 @@ jobs:
           python-version: "3.11"
       - name: Install dependencies
         run: make requirements
-      - name: Run training
-        env: 
+      - name: Resolve challenge
+        env:
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}      
-        run: make train
-
-      - name: Upload trained model
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: make resolve
+      - name: Predict on test data
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: make predict
+      - name: Upload predictions
         uses: actions/upload-artifact@v4
         with:
-          name: trained-model
-          path: models/
+          name: predictions
+          path: models/preds.csv
 
-      # step to commit the model changes to the repo (this should trigger the model predict workflow)
-      - name: Commit and push model changes
-        if: ${{ success() }}  # Only runs if all previous steps (including training) succeed
+      - name: Install AWS CLI
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-          
-          # Check if any files in the models/ directory have changed
-          git diff --exit-code models/ || {
-            git add models/
-            git commit -m "Update trained model"
-            git push
-          }
-      - name: Trigger Predict Workflow
+          pip install --upgrade awscli
+
+      - name: Upload predictions to S3
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          ARTIFACT_BUCKET: ${{ secrets.ARTIFACT_BUCKET }}
         run: |
-          curl -X POST -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-          -H "Accept: application/vnd.github.v3+json" \
-          https://api.github.com/repos/${{ github.repository }}/actions/workflows/predict_on_model_change.yml/dispatches \
-          -d '{"ref":"main"}'
+          aws s3 cp models/preds.csv s3://$ARTIFACT_BUCKET/predictions/preds.csv --acl private
