@@ -1,0 +1,60 @@
+name: Azure Storage Access Validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}  # Set as GitHub secret or replace with ${{ secrets.STORAGE_ACCOUNT }}
+  CONTAINER_NAME: ${{ secrets.AZURE_CONTAINER }}        # Set as GitHub secret or replace with ${{ secrets.CONTAINER_NAME }}
+
+jobs:
+  validate-storage-access:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate storage access
+        uses: azure/cli@v2
+        with:
+          azcliversion: latest
+          inlineScript: |
+            # Verify Azure authentication
+            echo "Authenticated identity:"
+            az account show --query "user.name" -o tsv
+            
+            # Test storage account access
+            echo -e "\nTesting storage access..."
+            if az storage blob list \
+              --account-name $STORAGE_ACCOUNT \
+              --container-name $CONTAINER_NAME \
+              --auth-mode login >/dev/null 2>&1; then
+              echo "✅ Success: Storage account access verified"
+            else
+              echo "❌ Error: Failed to access storage account"
+              exit 1
+            fi
+
+            # Optional: Test file upload capability
+            echo -e "\nTesting write permissions..."
+            echo "test-content" > test-file.txt
+            if az storage blob upload \
+              --account-name $STORAGE_ACCOUNT \
+              --container-name $CONTAINER_NAME \
+              --name test-file.txt \
+              --file test-file.txt \
+              --auth-mode login >/dev/null 2>&1; then
+              echo "✅ Success: Write permissions verified"
+              az storage blob delete --account-name $STORAGE_ACCOUNT --container-name $CONTAINER_NAME --name test-file.txt --auth-mode login
+            else
+              echo "❌ Error: Write permission test failed"
+              exit 1
+            fi
