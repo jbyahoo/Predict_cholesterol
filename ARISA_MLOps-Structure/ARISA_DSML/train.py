@@ -173,7 +173,7 @@ def train(
         reference_df["prediction"] = model.predict(X_train)
         reference_df["predicted_probability"] = [p[1] for p in model.predict_proba(X_train)]
         reference_df[target] = y_train
-        chunk_size = 50
+        chunk_size = 20
 
         # univariate drift for features
         udc = nml.UnivariateDriftCalculator(
