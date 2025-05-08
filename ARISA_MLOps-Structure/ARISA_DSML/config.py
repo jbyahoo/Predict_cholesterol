@@ -1,6 +1,6 @@
 """Config file for module."""
 from pathlib import Path
-
+from plotly import graph_objs as go
 from dotenv import load_dotenv
 from loguru import logger
 
