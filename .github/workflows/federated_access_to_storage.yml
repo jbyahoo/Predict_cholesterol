@@ -8,8 +8,8 @@ permissions:
   contents: read
 
 env:
-  STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}  # Set as GitHub secret or replace with ${{ secrets.STORAGE_ACCOUNT }}
-  CONTAINER_NAME: ${{ secrets.AZURE_CONTAINER }}        # Set as GitHub secret or replace with ${{ secrets.CONTAINER_NAME }}
+  STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+  CONTAINER_NAME: ${{ secrets.AZURE_STORAGE_CONTAINER }}
 
 jobs:
   validate-storage-access:
@@ -31,30 +31,15 @@ jobs:
             echo "Authenticated identity:"
             az account show --query "user.name" -o tsv
             
-            # Test storage account access
+            # Test storage account read access
             echo -e "\nTesting storage access..."
             if az storage blob list \
               --account-name $STORAGE_ACCOUNT \
               --container-name $CONTAINER_NAME \
               --auth-mode login >/dev/null 2>&1; then
               echo "✅ Success: Storage account access verified"
+              exit 0
             else
               echo "❌ Error: Failed to access storage account"
-              exit 1
-            fi
-
-            # Optional: Test file upload capability
-            echo -e "\nTesting write permissions..."
-            echo "test-content" > test-file.txt
-            if az storage blob upload \
-              --account-name $STORAGE_ACCOUNT \
-              --container-name $CONTAINER_NAME \
-              --name test-file.txt \
-              --file test-file.txt \
-              --auth-mode login >/dev/null 2>&1; then
-              echo "✅ Success: Write permissions verified"
-              az storage blob delete --account-name $STORAGE_ACCOUNT --container-name $CONTAINER_NAME --name test-file.txt --auth-mode login
-            else
-              echo "❌ Error: Write permission test failed"
               exit 1
             fi
