@@ -5,7 +5,8 @@ import subprocess
 def get_active_branch_name(wd="."):
 
     head_dir = Path(wd) / ".git" / "HEAD"
-    with head_dir.open("r") as f: content = f.read().splitlines()
+    with head_dir.open("r") as f: 
+        content = f.read().splitlines()
 
     for line in content:
         if line[0:4] == "ref:":
