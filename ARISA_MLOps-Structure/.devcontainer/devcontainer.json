@@ -2,7 +2,7 @@
 	"name": "ARISA-MLOps-devcontainer",
 	"image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
 
-	"postCreateCommand": "pip install --no-cache-dir mlflow==2.12.1 azure-storage-blob pymssql",
+	"postCreateCommand": "pip install --no-cache-dir mlflow==2.12.1 azure-storage-blob pymssql && pip install -r requirements.txt",
 	"postStartCommand": "mlflow ui --backend-store-uri 'mssql+pymssql://${MLFLOWDBUSERNAME}:${MLFLOWDBPASS}@${MLFLOWDBENDPOINT}:${MLFLOWDBPORT}/${MLFLOWDB}' --default-artifact-root wasbs://${ARTIFACT_CONTAINER}@${ARTIFACT_STORAGE_ACCOUNT}.blob.core.windows.net/models --host 0.0.0.0 --port 5000",
 	
 	"forwardPorts": [5000, 8080],
