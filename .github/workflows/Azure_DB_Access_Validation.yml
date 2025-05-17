@@ -29,11 +29,11 @@ jobs:
         with:
           azcliversion: latest
           inlineScript: |
-            az sql server show --name ${{ env.AZURE_DBSERVER }} --resource-group ${{ env.AZURE_DBRESOURCEGROUP }}
+            az sql server show --name ${{ env.AZURE_DBSERVER }} --resource-group ${{ env.AZURE_DBRESOURCEGROUP }} --location polandcentral
 
       - name: List SQL Databases
         uses: azure/cli@v2
         with:
           azcliversion: latest
           inlineScript: |
-            az sql db list --server ${{ env.AZURE_DBSERVER }} --resource-group ${{ env.AZURE_DBRESOURCEGROUP }}
+            az sql db list --server ${{ env.AZURE_DBSERVER }} --resource-group ${{ env.AZURE_DBRESOURCEGROUP }} --location polandcentral
