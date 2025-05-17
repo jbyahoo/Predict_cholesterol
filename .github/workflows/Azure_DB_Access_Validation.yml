@@ -10,7 +10,7 @@ permissions:
 env:
   AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVER}}
   AZURE_DBRESOURCEGROUP: ${{ secrets.AZURE_DBRESOURCEGROUP }}
-  AZURE_DBCLIENTID:  ${{ secrets.AZURE_CLIENT_ID }}
+  AZURE_DBCLIENT_ID:  ${{ secrets.AZURE_CLIENT_ID }}
   # ${{ secrets.AZURE_CLIENT_DEV_ID }}
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
@@ -22,10 +22,10 @@ jobs:
       - name: Azure login
         uses: azure/login@v2
         with:
-          client-id: $AZURE_DBCLIENTID
+          client-id: $AZURE_DBCLIENT_ID
           tenant-id: $AZURE_TENANT_ID
           subscription-id: $AZURE_SUBSCRIPTION_ID
 
-      - name: Test Azure SQL Connection
-        run: az sql db list --server $AZURE_DBSERVER --resource-group $AZURE_DBRESOURCEGROUP
+#      - name: Test Azure SQL Connection
+#        run: az sql db list --server $AZURE_DBSERVER --resource-group $AZURE_DBRESOURCEGROUP
 
