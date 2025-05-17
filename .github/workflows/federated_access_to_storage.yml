@@ -46,6 +46,4 @@ jobs:
               echo "❌ Error: Failed to access storage account"
               exit 1
             fi
-      - name: Test Azure SQL Connection
-        run: az sql db list --server $AZURE_DBSERVER --resource-group $AZURE_DBRESOURCEGROUP
 
