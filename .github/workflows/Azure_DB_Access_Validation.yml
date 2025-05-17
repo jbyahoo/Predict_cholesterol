@@ -23,6 +23,12 @@ jobs:
           client-id: ${{ env.AZURE_DBCLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+      - name: Verify SQL Server Exists
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az sql server list --resource-group ${{ env.AZURE_DBRESOURCEGROUP }}
+            az account show
       - name: Test Azure SQL Connection
         uses: azure/cli@v2
         with:
