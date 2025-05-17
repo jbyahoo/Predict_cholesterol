@@ -1,0 +1,30 @@
+name: Azure DB Access Validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+  CONTAINER_NAME: ${{ secrets.AZURE_STORAGE_CONTAINER }}
+  AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVER}}
+  AZURE_DBRESOURCEGROUP: ${{ secrets.AZURE_DBRESOURCEGROUP }}
+  
+
+jobs:
+  validate-db-access:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_DEV_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Test Azure SQL Connection
+        run: az sql db list --server $AZURE_DBSERVER --resource-group $AZURE_DBRESOURCEGROUP
+
