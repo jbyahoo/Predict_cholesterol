@@ -1,5 +1,4 @@
 name: Azure DB Access Validation
-
 on:
   workflow_dispatch:
 
@@ -8,9 +7,9 @@ permissions:
   contents: read
 
 env:
-  AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVER}}
+  AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVER }}
   AZURE_DBRESOURCEGROUP: ${{ secrets.AZURE_DBRESOURCEGROUP }}
-  AZURE_DBCLIENT_ID:  ${{ secrets.AZURE_CLIENT_ID }}
+  AZURE_DBCLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
@@ -21,6 +20,6 @@ jobs:
       - name: Azure login
         uses: azure/login@v2
         with:
-          client-id: ${{ env.$AZURE_DBCLIENT_ID }}
+          client-id: ${{ env.AZURE_DBCLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
