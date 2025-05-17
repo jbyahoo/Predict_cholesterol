@@ -29,7 +29,7 @@ jobs:
         with:
           azcliversion: latest
           inlineScript: |
-            az sql server show --name mlopsserverdemo.database.windows.net --resource-group DEMO_AUG_DEV
+            az sql server show --name 'mlopsserverdemo.database.windows.net' --resource-group 'DEMO_AUG_DEV'
 
       - name: List SQL Databases
         uses: azure/cli@v2
