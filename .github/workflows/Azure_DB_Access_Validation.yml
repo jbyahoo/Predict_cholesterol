@@ -21,9 +21,9 @@ jobs:
       - name: Azure login
         uses: azure/login@v2
         with:
-          client-id: $AZURE_DBCLIENT_ID
-          tenant-id: $AZURE_TENANT_ID
-          subscription-id: $AZURE_SUBSCRIPTION_ID
+          client-id: ${{ env.$AZURE_DBCLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
 
 #      - name: Test Azure SQL Connection
 #        run: az sql db list --server $AZURE_DBSERVER --resource-group $AZURE_DBRESOURCEGROUP
