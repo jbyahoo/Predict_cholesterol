@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 env:
-  AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVERNAME }}  # Short name (e.g., 'mlopsserverdemo')
+  AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVERNAME }}  # Krótka nazwa (np. 'mlopsserverdemo')
   AZURE_DBNAME: ${{ secrets.AZURE_DBNAME }}
   AZURE_DBRESOURCEGROUP: ${{ secrets.AZURE_DBRESOURCEGROUP }}
   AZURE_DBCLIENT_ID: ${{ secrets.AZURE_CLIENT_DEV_ID }}
@@ -17,7 +17,7 @@ env:
 
 jobs:
   validate-db-access:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # Wymagany dla działających repozytoriów Microsoft
     steps:
       - name: Azure login
         uses: azure/login@v2
@@ -28,12 +28,10 @@ jobs:
 
       - name: Install sqlcmd and ODBC driver
         run: |
-          # Get Ubuntu version dynamically
-          UBUNTU_VERSION=$(lsb_release -rs)
           sudo apt-get update
           sudo apt-get install -y curl
           curl https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/$UBUNTU_VERSION/prod jammy main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/22.04/prod jammy main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
           sudo apt-get update
           sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 mssql-tools18
           echo "/opt/mssql-tools18/bin" >> $GITHUB_PATH
