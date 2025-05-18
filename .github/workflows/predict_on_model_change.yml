@@ -5,10 +5,10 @@ on:
     branches:
       - main
     paths:  # predict when the test set has changed, as well as when the model artifact is updated
-      - 'data/raw/test.csv'
-      - 'data/processed/test.csv'
+      - 'data/raw/test_cholesterol.xlsx'
+      - 'data/processed/test_cholesterol.xlsx'
       - 'ARISA_DSML/predict.py'
-      - 'models/catboost_model_titanic.cbm'
+      - 'models/catboost_model_cholesterol.cbm'
   workflow_dispatch:  # Allows manual triggering from the train workflow
 jobs:
   preprocess:
@@ -61,14 +61,14 @@ jobs:
       - name: Resolve challenge
         env:
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
         run: make resolve
       - name: Predict on test data
         env:
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
         run: make predict
       - name: Upload predictions
         uses: actions/upload-artifact@v4
@@ -76,14 +76,17 @@ jobs:
           name: predictions
           path: models/preds.csv
 
-      - name: Install AWS CLI
-        run: |
-          pip install --upgrade awscli
+      - name: Install Azure CLI
+        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
-      - name: Upload predictions to S3
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          ARTIFACT_BUCKET: ${{ secrets.ARTIFACT_BUCKET }}
+      - name: Upload model to Azure Storage
+        env: 
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
         run: |
-          aws s3 cp models/preds.csv s3://$ARTIFACT_BUCKET/predictions/preds.csv --acl private
+          az storage blob upload \
+          --file models/preds.csv \
+          --container-name "$AZURE_STORAGE_CONTAINER" \
+          --name "predictions/preds.csv" \
+          --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
