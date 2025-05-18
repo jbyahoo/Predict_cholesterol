@@ -9,6 +9,7 @@ permissions:
 
 env:
   AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVER }}        # Should be short name (e.g., 'mlopsserverdemo')
+  AZURE_DBSERVERNAME: ${{ secrets.AZURE_DBSERVERNAME }}
   AZURE_DBNAME: ${{ secrets.AZURE_DBNAME }}            # Fixed secret reference
   AZURE_DBRESOURCEGROUP: ${{ secrets.AZURE_DBRESOURCEGROUP }}
   AZURE_DBCLIENT_ID: ${{ secrets.AZURE_CLIENT_DEV_ID }}
@@ -39,7 +40,7 @@ jobs:
         with:
           inlineScript: |
             az sql server show \
-              --name ${{ env.AZURE_DBSERVER }} \
+              --name ${{ env.AZURE_DBSERVERNAME }} \
               --resource-group ${{ env.AZURE_DBRESOURCEGROUP }}
 
       - name: List SQL Databases
@@ -47,12 +48,12 @@ jobs:
         with:
           inlineScript: |
             az sql db list \
-              --server ${{ env.AZURE_DBSERVER }} \
+              --server ${{ env.AZURE_DBSERVERNAME }} \
               --resource-group ${{ env.AZURE_DBRESOURCEGROUP }}
 
       - name: Connect to SQL Database
         run: |
-          sqlcmd -S "${{ env.AZURE_DBSERVER }}.database.windows.net" \
+          sqlcmd -S "${{ env.AZURE_DBSERVERNAME }}.database.windows.net" \
             -d "${{ env.AZURE_DBNAME }}" \
             -G \
             -U "ClientId=${{ env.AZURE_DBCLIENT_ID }}" \
