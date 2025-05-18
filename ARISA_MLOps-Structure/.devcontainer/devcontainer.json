@@ -2,8 +2,8 @@
 	"name": "ARISA-MLOps-devcontainer",
 	"image": "mcr.microsoft.com/devcontainers/python:3.11-bullseye",
 
-	"postCreateCommand": "pip install --no-cache-dir mlflow==2.12.1 azure-storage-blob pymssql && pip install -r requirements.txt",
-	"postStartCommand": "mlflow ui --backend-store-uri 'mssql+pymssql://${MLFLOWDBUSERNAME}:${MLFLOWDBPASS}@${MLFLOWDBENDPOINT}:${MLFLOWDBPORT}/${MLFLOWDB}' --default-artifact-root wasbs://${ARTIFACT_CONTAINER}@${ARTIFACT_STORAGE_ACCOUNT}.blob.core.windows.net/models --host 0.0.0.0 --port 5000",
+	"postCreateCommand": "pip install --no-cache-dir mlflow==2.12.1 pyodbc azure-identity azure-storage-blob && pip install -r requirements.txt",
+	"postStartCommand": "mlflow ui --backend-store-uri 'mssql+pymssql://${AZURE_DBUSERNAME}:${AZURE_DBUSERPASS}@${AZURE_DBSERVER}:${AZURE_DBPORT}/${AZURE_DBNAME}' --default-artifact-root wasbs://${AZURE_STORAGE_CONTAINER}@${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/mlflowlogs --host 0.0.0.0 --port 5000",
 	
 	"forwardPorts": [5000, 8080],
 
@@ -21,14 +21,16 @@
 	},
 	
 	"remoteEnv": {
-		"MLFLOWDBUSERNAME": "${localEnv:MLFLOWDBUSERNAME}",
-		"MLFLOWDBPASS": "${localEnv:MLFLOWDBPASS}",
-		"MLFLOWDBENDPOINT": "${localEnv:MLFLOWDBENDPOINT}",
-		"MLFLOWDBPORT": "${localEnv:MLFLOWDBPORT}",
-		"MLFLOWDB": "${localEnv:MLFLOWDB}",
-		"ARTIFACT_CONTAINER": "${localEnv:ARTIFACT_CONTAINER}",
-		"ARTIFACT_STORAGE_ACCOUNT": "${localEnv:ARTIFACT_STORAGE_ACCOUNT}",
-		"AZURE_STORAGE_CONNECTION_STRING": "${localEnv:AZURE_STORAGE_CONNECTION_STRING}"
+		"AZURE_CLIENT_ID": "${localEnv:AZURE_CLIENT_ID}",
+		"AZURE_TENANT_ID": "${localEnv:AZURE_TENANT_ID}",
+		"AZURE_DBSERVER": "${localEnv:AZURE_DBSERVER}",
+		"AZURE_DBSERVER_NAME": "${localEnv:AZURE_DBSERVER_NAME}",
+		"AZURE_DBPORT": "${localEnv:AZURE_DBPORT}",
+		"AZURE_DBUSERNAME": "${localEnv:AZURE_DBUSERNAME}",
+		"AZURE_DBUSERPASS": "${localEnv:AZURE_DBUSERPASS}",
+		"AZURE_DBNAME": "${localEnv:AZURE_DBNAME}",
+		"AZURE_STORAGE_CONTAINER": "${localEnv:AZURE_STORAGE_CONTAINER}",
+		"AZURE_STORAGE_ACCOUNT": "${localEnv:AZURE_STORAGE_ACCOUNT}"
 	},
 	
 	"containerEnv": {
@@ -44,29 +46,33 @@
 	},
 
 	"secrets": {
-		"MLFLOWDBUSERNAME": {
+		"AZURE_DBUSERNAME": {
 			"description": "Username for authenticating the Mlflow backend db connection."
 		},
-		"MLFLOWDBPASS": { 
+		"AZURE_DBUSERPASS": { 
 			"description": "Password for authenticating the Mlflow backend db connection."
 		},
-		"MLFLOWDBENDPOINT": { 
+		"AZURE_DBSERVER": { 
 			"description": "Endpoint where the Mlflow backend is publicly available."
 		},
-		"MLFLOWDBPORT": { 
+		"AZURE_DBPORT": { 
 			"description": "Port where the Mlflow backend db is exposed."
 		},
-		"MLFLOWDB": { 
+		"AZURE_DBNAME": { 
 			"description": "Name of Mlflow backend db."
 		},
-		"ARTIFACT_CONTAINER": {
+		"AZURE_STORAGE_CONTAINER": {
 			"description": "Azure Blob Storage container for MLflow artifacts."
 		},
-		"ARTIFACT_STORAGE_ACCOUNT": {
+		"AZURE_STORAGE_ACCOUNT": {
 			"description": "Azure Storage Account for MLflow artifacts."
 		},
-		"AZURE_STORAGE_CONNECTION_STRING": {
-			"description": "Azure Storage connection string for MLflow artifact upload."
+		"AZURE_CLIENT_ID": {
+			"description": "Azure USMI ID string for MLflow artifact upload."
+		}
+		,
+		"AZURE_TENANT_ID": {
+			"description": "Azure AZURE tenant ID connection string for MLflow artifact upload."
 		}
 	}
 }
