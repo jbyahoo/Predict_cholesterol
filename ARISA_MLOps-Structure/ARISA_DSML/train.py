@@ -21,15 +21,14 @@ from ARISA_DSML.config import (
 from ARISA_DSML.helpers import get_git_commit_hash
 import nannyml as nml
 
-
-# comment to trigger workflow ver6
+mlflow.set_tracking_uri("http://127.0.0.1:5000")
 
 def run_hyperopt(X_train: pd.DataFrame, y_train: pd.DataFrame, test_size: float = 0.25, n_trials: int = 20, overwrite: bool = False) -> str | Path:
     """Run optuna hyperparameter tuning."""
     best_params_path = MODELS_DIR / "best_params.pkl"
     if not best_params_path.is_file() or overwrite:
         X_train_opt, X_val_opt, y_train_opt, y_val_opt = train_test_split(X_train, y_train, test_size=test_size, random_state=42)
-
+ 
         def objective(trial: optuna.trial.Trial) -> float:
             with mlflow.start_run(nested=True):
                 params = {
@@ -68,7 +67,6 @@ def run_hyperopt(X_train: pd.DataFrame, y_train: pd.DataFrame, test_size: float 
         params = joblib.load(best_params_path)
     logger.info("Best Parameters: " + str(params))
     return best_params_path
-
 
 def train(
     X_train: pd.DataFrame,
@@ -202,7 +200,6 @@ def train(
 
     return (model_path, model_params_path)
 
-
 def train_cv(X_train: pd.DataFrame, y_train: pd.DataFrame, params: dict, eval_metric: str = "F1", n: int = 5) -> str | Path:
     """Do cross-validated training."""
     params["eval_metric"] = eval_metric
@@ -217,14 +214,12 @@ def train_cv(X_train: pd.DataFrame, y_train: pd.DataFrame, params: dict, eval_me
         partition_random_seed=42,
         shuffle=True,
         plot=True,
-
     )
 
     cv_output_path = MODELS_DIR / "cv_results.csv"
     cv_results.to_csv(cv_output_path, index=False)
 
     return cv_output_path
-
 
 def plot_error_scatter(
         df_plot: pd.DataFrame,
@@ -240,7 +235,6 @@ def plot_error_scatter(
     """Plot plotly scatter plots with error areas."""
     # Create figure
     fig = go.Figure()
-
     if not len(name):
         name = y
 
@@ -254,9 +248,8 @@ def plot_error_scatter(
     # Add shaded error region
     fig.add_trace(
         go.Scatter(
-            x=pd.concat([df_plot[y], df_plot[x][:: -1]]),
-            y=pd.concat([df_plot[y] + df_plot[err],
-                         df_plot[y] - df_plot[err]]),
+            x=pd.concat([df_plot[x], df_plot[x][::-1]]),
+            y=pd.concat([df_plot[y] + df_plot[err], df_plot[y] - df_plot[err][::-1]]),
             fill="toself",
             fillcolor="rgba(0, 0, 255, 0.2)",
             line={"color": "rgba(255, 255, 255, 0)"},
@@ -281,54 +274,11 @@ def plot_error_scatter(
     fig.write_image(FIGURES_DIR / f"{y}_vs_{x}.png")
     return fig
 
-
 def get_or_create_experiment(experiment_name: str):
-    """Retrieve the ID of an existing MLflow experiment or create a new one if it doesn't exist.
-
-    This function checks if an experiment with the given name exists within MLflow.
-    If it does, the function returns its ID. If not, it creates a new experiment
-    with the provided name and returns its ID.
-
-    Parameters
-    ----------
-    - experiment_name (str): Name of the MLflow experiment.
-
-    Returns
-    -------
-    - str: ID of the existing or newly created MLflow experiment.
-
-    """
+    """Retrieve the ID of an existing MLflow experiment or create a new one if it doesn't exist."""
     if experiment := mlflow.get_experiment_by_name(experiment_name):
         return experiment.experiment_id
-
     return mlflow.create_experiment(experiment_name)
-
-
-# def champion_callback(study, frozen_trial):
-#     """
-#     Logging callback that will report when a new trial iteration improves upon existing
-#     best trial values.
-
-#     Note: This callback is not intended for use in distributed computing systems such as Spark
-#     or Ray due to the micro-batch iterative implementation for distributing trials to a cluster's
-#     workers or agents.
-#     The race conditions with file system state management for distributed trials will render
-#     inconsistent values with this callback.
-#     """
-
-#     winner = study.user_attrs.get("winner", None)
-
-#     if study.best_value and winner != study.best_value:
-#         study.set_user_attr("winner", study.best_value)
-#         if winner:
-#             improvement_percent = (abs(winner - study.best_value) / study.best_value) * 100
-#             print(
-#                 f"Trial {frozen_trial.number} achieved value: {frozen_trial.value} with "
-#                 f"{improvement_percent: .4f}% improvement"
-#             )
-#         else:
-#             print(f"Initial trial {frozen_trial.number} achieved value: {frozen_trial.value}")
-
 
 if __name__ == "__main__":
     # for running in workflow in actions again again
@@ -337,15 +287,17 @@ if __name__ == "__main__":
     y_train = df_train.pop(target)
     X_train = df_train
 
-    experiment_id = get_or_create_experiment("cholesterol_hyperparam_tuning")
-    mlflow.set_experiment(experiment_id=experiment_id)
+    # --------- Hyperparameter tuning experiment ---------
+    experiment_name = "cholesterol_hyperparam_tuning"
+    get_or_create_experiment(experiment_name)  # Ensure experiment exists
+    mlflow.set_experiment(experiment_name)
     best_params_path = run_hyperopt(X_train, y_train)
     params = joblib.load(best_params_path)
     cv_output_path = train_cv(X_train, y_train, params)
     cv_results = pd.read_csv(cv_output_path)
 
-    experiment_id = get_or_create_experiment("cholesterol_full_training")
-    mlflow.set_experiment(experiment_id=experiment_id)
+    # --------- Full training experiment ---------
+    experiment_name = "cholesterol_full_training"
+    get_or_create_experiment(experiment_name)  # Ensure experiment exists
+    mlflow.set_experiment(experiment_name)
     model_path, model_params_path = train(X_train, y_train, params, cv_results=cv_results)
-
-    cv_results = pd.read_csv(cv_output_path)
