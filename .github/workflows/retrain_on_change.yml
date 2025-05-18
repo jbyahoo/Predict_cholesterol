@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:  # (re)train when train data changes or when the preproc or train code changes
-      - 'data/raw/train.csv'
-      - 'data/processed/train.csv'
+      - 'data/raw/train_cholesterol.xlsx'
+      - 'data/processed/train_choloesterol.xlsx'
       - 'ARISA_DSML/preproc.py'
       - 'ARISA_DSML/train.py'
       - 'models/best_params.pkl'  # model should also be retrained after hyperparam tuning is run
