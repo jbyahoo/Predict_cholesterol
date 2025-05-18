@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 env:
-  AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVER }}  # Short name (e.g., 'mlopsserverdemo')
+  AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVERNAME }}  # Short name (e.g., 'mlopsserverdemo')
   AZURE_DBNAME: ${{ secrets.AZURE_DBNAME }}
   AZURE_DBRESOURCEGROUP: ${{ secrets.AZURE_DBRESOURCEGROUP }}
   AZURE_DBCLIENT_ID: ${{ secrets.AZURE_CLIENT_DEV_ID }}
