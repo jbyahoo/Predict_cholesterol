@@ -10,6 +10,8 @@ permissions:
 env:
   AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVERNAME }}  # Krótka nazwa (np. 'mlopsserverdemo')
   AZURE_DBNAME: ${{ secrets.AZURE_DBNAME }}
+  AZURE_DBUSERNAME: ${{ secrets.AZURE_DBUSERNAME }}
+  AZURE_DBUSERPASS: ${{ secrets.AZURE_DBUSERPASS }}
   AZURE_DBRESOURCEGROUP: ${{ secrets.AZURE_DBRESOURCEGROUP }}
   AZURE_DBCLIENT_ID: ${{ secrets.AZURE_CLIENT_DEV_ID }}
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -56,6 +58,6 @@ jobs:
         run: |
           sqlcmd -S "${{ env.AZURE_DBSERVER }}.database.windows.net" \
             -d "${{ env.AZURE_DBNAME }}" \
-            --authentication-method ActiveDirectoryManagedIdentity \
-            -U "${{ env.AZURE_DBCLIENT_ID }}" \
+            -U "${{ env.AZURE_DBUSERNAME }}" \
+            -P "${{ env.AZURE_DBUSERPASS }}" \
             -Q "SELECT CURRENT_USER;"
