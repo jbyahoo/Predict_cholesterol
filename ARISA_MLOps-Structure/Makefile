@@ -2,7 +2,7 @@
 # GLOBALS                                                                       #
 #################################################################################
 
-PROJECT_NAME = ARISA_MLOps-Structure
+PROJECT_NAME = Cholesterol-predition
 PYTHON_VERSION = 3.11
 PYTHON_INTERPRETER = python
 
@@ -14,10 +14,9 @@ PYTHON_INTERPRETER = python
 ## Install Python dependencies
 .PHONY: requirements
 requirements:
-	uv pip install -r requirements.txt
+	$(PYTHON_INTERPRETER) -m pip install -U pip
+	$(PYTHON_INTERPRETER) -m pip install requirements.txt
 	
-
-
 
 ## Delete all compiled Python files
 .PHONY: clean
@@ -30,18 +29,25 @@ clean:
 .PHONY: lint
 lint:
 	flake8 ARISA_DSML
-	isort --check --diff ARISA_DSML
-	black --check ARISA_DSML
 
-## Format source code with black
-.PHONY: format
-format:
-	isort ARISA_DSML
-	black ARISA_DSML
+all:
+	requirements clean lint
 
+.PHONY: preprocess
+preprocess:
+	python -m ARISA_DSML.preproc
 
+.PHONY: train
+train:
+	python -m ARISA_DSML.train
 
+.PHONY: resolve
+resolve:
+	python -m ARISA_DSML.resolve
 
+.PHONY: predict
+predict:
+	python -m ARISA_DSML.predict
 
 ## Set up Python interpreter environment
 .PHONY: create_environment
@@ -51,29 +57,3 @@ create_environment:
 	@echo ">>> Windows: .\\\\.venv\\\\Scripts\\\\activate"
 	@echo ">>> Unix/macOS: source ./.venv/bin/activate"
 
-
-
-
-#################################################################################
-# PROJECT RULES                                                                 #
-#################################################################################
-
-
-
-#################################################################################
-# Self Documenting Commands                                                     #
-#################################################################################
-
-.DEFAULT_GOAL := help
-
-define PRINT_HELP_PYSCRIPT
-import re, sys; \
-lines = '\n'.join([line for line in sys.stdin]); \
-matches = re.findall(r'\n## (.*)\n[\s\S]+?\n([a-zA-Z_-]+):', lines); \
-print('Available rules:\n'); \
-print('\n'.join(['{:25}{}'.format(*reversed(match)) for match in matches]))
-endef
-export PRINT_HELP_PYSCRIPT
-
-help:
-	@$(PYTHON_INTERPRETER) -c "${PRINT_HELP_PYSCRIPT}" < $(MAKEFILE_LIST)
