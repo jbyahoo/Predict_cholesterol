@@ -52,10 +52,10 @@ jobs:
               --server ${{ env.AZURE_DBSERVER }} \
               --resource-group ${{ env.AZURE_DBRESOURCEGROUP }}
 
-      - name: Connect to SQL Database
+      - name: Connect to SQL Database with Managed Identity
         run: |
           sqlcmd -S "${{ env.AZURE_DBSERVER }}.database.windows.net" \
             -d "${{ env.AZURE_DBNAME }}" \
-            -G \
-            -U "ClientId=${{ env.AZURE_DBCLIENT_ID }}" \
+            --authentication-method ActiveDirectoryManagedIdentity \
+            -U "${{ env.AZURE_DBCLIENT_ID }}" \
             -Q "SELECT CURRENT_USER;"
