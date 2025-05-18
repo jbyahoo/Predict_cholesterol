@@ -8,6 +8,7 @@ permissions:
 
 env:
   AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVER }}
+  AZURE_DBSERVERShort: 'mlopsserverdemo'
   AZURE_DBRESOURCEGROUP: ${{ secrets.AZURE_DBRESOURCEGROUP }}
   AZURE_DBCLIENT_ID: ${{ secrets.AZURE_CLIENT_DEV_ID }}
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -29,11 +30,11 @@ jobs:
         with:
           azcliversion: latest
           inlineScript: |
-            az sql server show --name 'mlopsserverdemo.database.windows.net' --resource-group 'DEMO_AUG_DEV'
+            az sql server show --name ${{ env.AZURE_DBSERVERShort }} --resource-group &{{ env.AZURE_DBRESOURCEGROUP }}
 
       - name: List SQL Databases
         uses: azure/cli@v2
         with:
           azcliversion: latest
           inlineScript: |
-            az sql db list --server ${{ env.AZURE_DBSERVER }} --resource-group ${{ env.AZURE_DBRESOURCEGROUP }}
+            az sql db list --server ${{ env.AZURE_DBSERVERShort }} --resource-group ${{ env.AZURE_DBRESOURCEGROUP }}
