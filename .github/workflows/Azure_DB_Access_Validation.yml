@@ -8,6 +8,7 @@ permissions:
 
 env:
   AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVER }}
+  AZURE_DBNAME: ${{ AZURE_DBNAME }}
   AZURE_DBSERVERShort: 'mlopsserverdemo'
   AZURE_DBRESOURCEGROUP: ${{ secrets.AZURE_DBRESOURCEGROUP }}
   AZURE_DBCLIENT_ID: ${{ secrets.AZURE_CLIENT_DEV_ID }}
@@ -38,3 +39,6 @@ jobs:
           azcliversion: latest
           inlineScript: |
             az sql db list --server ${{ env.AZURE_DBSERVERShort }} --resource-group ${{ env.AZURE_DBRESOURCEGROUP }}
+      - name: Connect to SQL Database
+        run: sqlcmd -S ${{ env.AZURE_DBSERVER }} -d "{{ env.AZURE_DBNAME }}" -G -U "ClientId=${{ env.AZURE_DBCLIENT_ID}}"
+            
