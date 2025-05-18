@@ -15,7 +15,7 @@ PYTHON_INTERPRETER = python
 .PHONY: requirements
 requirements:
 	$(PYTHON_INTERPRETER) -m pip install -U pip
-	$(PYTHON_INTERPRETER) -m pip install requirements.txt
+	$(PYTHON_INTERPRETER) -m pip install -r requirements.txt
 	
 
 ## Delete all compiled Python files
