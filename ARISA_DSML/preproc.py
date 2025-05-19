@@ -8,6 +8,8 @@ from sklearn.preprocessing import StandardScaler
 from kaggle.api.kaggle_api_extended import KaggleApi
 from ARISA_DSML.config import DATASET, PROCESSED_DATA_DIR, RAW_DATA_DIR, target
 
+
+
 sys.path.append(os.path.abspath(".."))
 
 
@@ -26,8 +28,6 @@ def get_raw_data(dataset: str = DATASET) -> None:
         path=str(download_folder),
         unzip=True,
         quiet=False,
-        # Optionally specify files if needed:
-        # file_name="test_cholesterol.xlsx"
     )
 
     logger.info("Dataset download and extraction completed successfully")
