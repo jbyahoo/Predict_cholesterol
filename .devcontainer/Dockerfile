@@ -1,12 +1,17 @@
 FROM python:3.11-slim
 
-# Install dependencies (optional)
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    python3-pip \
+    wget \
+    gnupg \
     && rm -rf /var/lib/apt/lists/*
 
-# Install MLflow and other Python tools
-RUN pip install --no-cache-dir mlflow==2.12.1 loguru kaggle pyodbc azure-identity azure-storage-blob
+# Install .NET SDK 9.0
+RUN wget https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb -O packages-microsoft-prod.deb \
+    && dpkg -i packages-microsoft-prod.deb \
+    && rm packages-microsoft-prod.deb \
+    && apt-get update \
+    && apt-get install -y dotnet-sdk-9.0
 
-# Ensure .NET SDK is recognized
-ENV PATH="/usr/share/dotnet:${PATH}"
+# Install Python tools
+RUN pip install --no-cache-dir mlflow==2.12.1 loguru kaggle pyodbc azure-identity azure-storage-blob
