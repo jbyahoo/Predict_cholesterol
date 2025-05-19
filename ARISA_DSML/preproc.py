@@ -111,7 +111,7 @@ if __name__ == "__main__":
     get_raw_data()
 
     # preprocess both sets
-    logger.info("preprocessing train_cholesterol.xlsx")
-    preprocess_df(RAW_DATA_DIR / "train_cholesterol.xlsx")
+    logger.info("preprocessing train_choloesterol.xlsx")
+    preprocess_df(RAW_DATA_DIR / "train_choloesterol.xlsx")
     logger.info("preprocessing test_cholesterol.xlsx")
     preprocess_df(RAW_DATA_DIR / "test_cholesterol.xlsx")
