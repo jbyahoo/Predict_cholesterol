@@ -8,6 +8,8 @@ from sklearn.preprocessing import StandardScaler
 from kaggle.api.kaggle_api_extended import KaggleApi
 from ARISA_DSML.config import DATASET, PROCESSED_DATA_DIR, RAW_DATA_DIR, target
 
+
+
 sys.path.append(os.path.abspath(".."))
 
 
@@ -26,8 +28,6 @@ def get_raw_data(dataset: str = DATASET) -> None:
         path=str(download_folder),
         unzip=True,
         quiet=False,
-        # Optionally specify files if needed:
-        # file_name="test_cholesterol.xlsx"
     )
 
     logger.info("Dataset download and extraction completed successfully")
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     get_raw_data()
 
     # preprocess both sets
-    logger.info("preprocessing train_cholesterol.csv")
-    preprocess_df(RAW_DATA_DIR / "train_cholesterol.csv")
-    logger.info("preprocessing test_cholesterol.csv")
-    preprocess_df(RAW_DATA_DIR / "test_cholesterol.csv")
+    logger.info("preprocessing train_choloesterol.xlsx")
+    preprocess_df(RAW_DATA_DIR / "train_choloesterol.xlsx")
+    logger.info("preprocessing test_cholesterol.xlsx")
+    preprocess_df(RAW_DATA_DIR / "test_cholesterol.xlsx")
