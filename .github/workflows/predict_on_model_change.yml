@@ -41,7 +41,7 @@ jobs:
       - name: Log model to MLflow
         env:
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-        run: python log_model.py
+        run: python ARISA_DSML/log_model.py
 
       - name: Verify model path
         run: |
