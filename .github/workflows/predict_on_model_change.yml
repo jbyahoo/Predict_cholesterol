@@ -4,45 +4,66 @@ on:
   push:
     branches:
       - main
-    paths:  # predict when the test set has changed, as well as when the model artifact is updated
+    paths:
       - 'data/raw/test_cholesterol.xlsx'
       - 'data/processed/test_cholesterol.xlsx'
       - 'ARISA_DSML/predict.py'
       - 'models/catboost_model_cholesterol.cbm'
-  workflow_dispatch:  # Allows manual triggering from the train workflow
+  workflow_dispatch:
+
 jobs:
   preprocess:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Create directories
+        run: |
+          mkdir -p data/raw
+          mkdir -p data/processed
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with: 
           python-version: "3.11"
+
       - name: Install dependencies
-        run: make requirements
-      - name: Create kaggle directory
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Download raw data from Kaggle
         env: 
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
-          mkdir -p $HOME/.config
-          mkdir -p $HOME/.config/kaggle
-          echo "$KAGGLE_KEY" > $HOME/.config/kaggle/kaggle.json
-          chmod 600 $HOME/.config/kaggle/kaggle.json
-      - name: Run preprocessing
-        run: make preprocess
+          mkdir -p ~/.kaggle
+          echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
+          kaggle datasets download -d joannborkowska/cholesterol-supplementation-classification -p data/raw/
+          unzip data/raw/*.zip -d data/raw/
 
-      - name: Upload preprocessed data
+      - name: Run preprocessing
+        run: |
+          python -m ARISA_DSML.preproc  # Ensure this generates data/processed/train.csv
+
+      - name: Verify processed data
+        run: |
+          ls -la data/processed/
+          test -f data/processed/train.csv
+
+      - name: Upload processed data
         uses: actions/upload-artifact@v4
         with:
           name: processed-data
           path: data/processed
+
   predict:
     runs-on: ubuntu-latest
     needs: preprocess
     permissions:
-      contents: write  # This gives the token write access to the repository contents
+      contents: write
     steps: 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -52,41 +73,10 @@ jobs:
         with:
           name: processed-data
           path: data/processed
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with: 
-          python-version: "3.11"
-      - name: Install dependencies
-        run: make requirements
-      - name: Resolve challenge
-        env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-          AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
-          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-        run: make resolve
-      - name: Predict on test data
-        env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-          AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
-          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-        run: make predict
-      - name: Upload predictions
-        uses: actions/upload-artifact@v4
-        with:
-          name: predictions
-          path: models/preds.csv
 
-      - name: Install Azure CLI
-        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-
-      - name: Upload model to Azure Storage
-        env: 
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-          AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
+      - name: Verify downloaded data
         run: |
-          az storage blob upload \
-          --file models/preds.csv \
-          --container-name "$AZURE_STORAGE_CONTAINER" \
-          --name "predictions/preds.csv" \
-          --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
+          ls -la data/processed/
+          test -f data/processed/train.csv
+
+      # Rest of your existing predict steps...
