@@ -1,5 +1,4 @@
 from pathlib import Path
-
 from catboost import CatBoostClassifier, Pool, cv
 import joblib
 from loguru import logger
@@ -24,11 +23,11 @@ import nannyml as nml
 mlflow.set_tracking_uri("http://127.0.0.1:5000")
 
 def run_hyperopt(X_train: pd.DataFrame, y_train: pd.DataFrame, test_size: float = 0.25, n_trials: int = 20, overwrite: bool = False) -> str | Path:
-    """Run optuna hyperparameter tuning."""
     best_params_path = MODELS_DIR / "best_params.pkl"
     if not best_params_path.is_file() or overwrite:
         X_train_opt, X_val_opt, y_train_opt, y_val_opt = train_test_split(X_train, y_train, test_size=test_size, random_state=42)
- 
+        study = optuna.create_study(direction="minimize")
+
         def objective(trial: optuna.trial.Trial) -> float:
             with mlflow.start_run(nested=True):
                 params = {
@@ -49,23 +48,14 @@ def run_hyperopt(X_train: pd.DataFrame, y_train: pd.DataFrame, test_size: float 
                 mlflow.log_params(params)
                 preds = model.predict(X_val_opt)
                 probs = model.predict_proba(X_val_opt)
-
                 f1 = f1_score(y_val_opt, preds)
                 logloss = log_loss(y_val_opt, probs)
                 mlflow.log_metric("f1", f1)
                 mlflow.log_metric("logloss", logloss)
+                return logloss
 
-            return model.get_best_score()["validation"]["Logloss"]
-
-        study = optuna.create_study(direction="minimize")
         study.optimize(objective, n_trials=n_trials)
-
         joblib.dump(study.best_params, best_params_path)
-
-        params = study.best_params
-    else:
-        params = joblib.load(best_params_path)
-    logger.info("Best Parameters: " + str(params))
     return best_params_path
 
 def train(
@@ -75,20 +65,13 @@ def train(
     artifact_name: str = MODEL_NAME,
     cv_results=None,
 ) -> tuple[str | Path]:
-    """Train model on full dataset without cross-validation."""
     if params is None:
         logger.info("Training model without tuned hyperparameters")
         params = {}
-
-    # Remove any non-CatBoost params if present
     params = {k: v for k, v in params.items() if k not in ["feature_columns"]}
 
     with mlflow.start_run():
-        model = CatBoostClassifier(
-            **params,
-            verbose=True,
-        )
-
+        model = CatBoostClassifier(**params, verbose=True)
         model.fit(
             X_train,
             y_train,
@@ -97,17 +80,13 @@ def train(
             use_best_model=False,
             plot=True,
         )
-
         mlflow.log_params(params)
         mlflow.log_param("feature_columns", list(X_train.columns))
-
         MODELS_DIR.mkdir(parents=True, exist_ok=True)
-
         model_path = MODELS_DIR / f"{artifact_name}.cbm"
         model.save_model(model_path)
         mlflow.log_artifact(model_path)
 
-        # Defensive logging and plotting for cv_results
         if isinstance(cv_results, pd.DataFrame):
             required_cols_f1 = {"test-F1-mean"}
             required_cols_logloss = {"iterations", "test-Logloss-mean", "test-Logloss-std"}
@@ -116,7 +95,6 @@ def train(
                 mlflow.log_metric("f1_cv_mean", cv_metric_mean)
             else:
                 logger.warning("cv_results missing required F1 columns for metric logging.")
-            # Plot F1
             if {"iterations", "test-F1-mean", "test-F1-std"}.issubset(cv_results.columns):
                 fig1 = plot_error_scatter(
                     df_plot=cv_results,
@@ -129,7 +107,6 @@ def train(
                 mlflow.log_figure(fig1, "test-F1-mean_vs_iterations.png")
             else:
                 logger.warning("cv_results missing required columns for F1 plot.")
-            # Plot Logloss
             if required_cols_logloss.issubset(cv_results.columns):
                 fig2 = plot_error_scatter(
                     cv_results,
@@ -147,7 +124,6 @@ def train(
         else:
             logger.warning("cv_results is not a DataFrame. Skipping cv metrics and plots.")
 
-        # Log the model
         model_info = mlflow.catboost.log_model(
             cb_model=model,
             artifact_path="model",
@@ -155,32 +131,31 @@ def train(
             registered_model_name=MODEL_NAME,
         )
         client = MlflowClient(mlflow.get_tracking_uri())
-        model_info = client.get_latest_versions(MODEL_NAME)[0]
-        client.set_registered_model_alias(MODEL_NAME, "challenger", model_info.version)
-        client.set_model_version_tag(
-            name=model_info.name,
-            version=model_info.version,
-            key="git_sha",
-            value=get_git_commit_hash(),
-        )
+        latest_versions = client.get_latest_versions(MODEL_NAME)
+        if latest_versions:
+            model_info = latest_versions[0]
+            client.set_registered_model_alias(MODEL_NAME, "challenger", model_info.version)
+            client.set_model_version_tag(
+                name=model_info.name,
+                version=model_info.version,
+                key="git_sha",
+                value=get_git_commit_hash(),
+            )
         model_params_path = MODELS_DIR / "model_params.pkl"
         joblib.dump(params, model_params_path)
 
-        # ----------NannyML----------
         reference_df = X_train.copy()
         reference_df["prediction"] = model.predict(X_train)
         reference_df["predicted_probability"] = [p[1] for p in model.predict_proba(X_train)]
         reference_df[target] = y_train
         chunk_size = 20
 
-        # univariate drift for features
         udc = nml.UnivariateDriftCalculator(
             column_names=[col for col in X_train.columns if col != "PassengerId"],
             chunk_size=chunk_size,
         )
         udc.fit(reference_df.drop(columns=["prediction", target, "predicted_probability"], errors="ignore"))
 
-        # Confidence-based Performance Estimation for target
         estimator = nml.CBPE(
             problem_type="classification_binary",
             y_pred_proba="predicted_probability",
@@ -201,12 +176,9 @@ def train(
     return (model_path, model_params_path)
 
 def train_cv(X_train: pd.DataFrame, y_train: pd.DataFrame, params: dict, eval_metric: str = "F1", n: int = 5) -> str | Path:
-    """Do cross-validated training."""
     params["eval_metric"] = eval_metric
     params["loss_function"] = "Logloss"
-
     data = Pool(X_train, y_train)
-
     cv_results = cv(
         params=params,
         pool=data,
@@ -215,10 +187,8 @@ def train_cv(X_train: pd.DataFrame, y_train: pd.DataFrame, params: dict, eval_me
         shuffle=True,
         plot=True,
     )
-
     cv_output_path = MODELS_DIR / "cv_results.csv"
     cv_results.to_csv(cv_output_path, index=False)
-
     return cv_output_path
 
 def plot_error_scatter(
@@ -232,20 +202,14 @@ def plot_error_scatter(
         ytitle: str = "",
         yaxis_range: list[float] | None = None,
 ) -> None:
-    """Plot plotly scatter plots with error areas."""
-    # Create figure
     fig = go.Figure()
     if not len(name):
         name = y
-
-    # Add mean performance line
     fig.add_trace(
         go.Scatter(
             x=df_plot[x], y=df_plot[y], mode="lines", name=name, line={"color": "blue"},
         ),
     )
-
-    # Add shaded error region
     fig.add_trace(
         go.Scatter(
             x=pd.concat([df_plot[x], df_plot[x][::-1]]),
@@ -256,48 +220,39 @@ def plot_error_scatter(
             showlegend=False,
         ),
     )
-
-    # Customize layout
     fig.update_layout(
         title=title,
         xaxis_title=xtitle,
         yaxis_title=ytitle,
         template="plotly_white",
     )
-
     if yaxis_range is not None:
         fig.update_layout(
             yaxis={"range": yaxis_range},
         )
-
     fig.show()
     fig.write_image(FIGURES_DIR / f"{y}_vs_{x}.png")
     return fig
 
 def get_or_create_experiment(experiment_name: str):
-    """Retrieve the ID of an existing MLflow experiment or create a new one if it doesn't exist."""
     if experiment := mlflow.get_experiment_by_name(experiment_name):
         return experiment.experiment_id
     return mlflow.create_experiment(experiment_name)
 
 if __name__ == "__main__":
-    # for running in workflow in actions again again
     df_train = pd.read_csv(PROCESSED_DATA_DIR / "train.csv")
-
     y_train = df_train.pop(target)
     X_train = df_train
 
-    # --------- Hyperparameter tuning experiment ---------
     experiment_name = "cholesterol_hyperparam_tuning"
-    get_or_create_experiment(experiment_name)  # Ensure experiment exists
+    get_or_create_experiment(experiment_name)
     mlflow.set_experiment(experiment_name)
     best_params_path = run_hyperopt(X_train, y_train)
     params = joblib.load(best_params_path)
     cv_output_path = train_cv(X_train, y_train, params)
     cv_results = pd.read_csv(cv_output_path)
 
-    # --------- Full training experiment ---------
     experiment_name = "cholesterol_full_training"
-    get_or_create_experiment(experiment_name)  # Ensure experiment exists
+    get_or_create_experiment(experiment_name)
     mlflow.set_experiment(experiment_name)
     model_path, model_params_path = train(X_train, y_train, params, cv_results=cv_results)
