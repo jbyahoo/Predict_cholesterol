@@ -3,17 +3,41 @@ from ARISA_DSML.config import (
 )
 import mlflow
 from mlflow.client import MlflowClient
+from mlflow.entities.model_registry import ModelVersion
+from mlflow.exceptions import MlflowException
+import logging
+from typing import Optional
 from loguru import logger
 
+logger = logging.getLogger(__name__)
 
-def get_model_by_alias(client, model_name: str = MODEL_NAME, alias: str = "champion"):
+def get_model_by_alias(
+    client: MlflowClient,
+    model_name: str = "cholesterol-pred-bclass",
+    alias: str = "champion"
+) -> Optional[ModelVersion]:
+    """
+    Retrieve a model version by its alias from MLflow Model Registry.
+    
+    Args:
+        client: MLflow client instance
+        model_name: Name of the registered model
+        alias: Alias name to look up
+    
+    Returns:
+        ModelVersion if found, None if alias doesn't exist
+    """
     try:
-        alias_mv = client.get_model_version_by_alias(model_name, alias)
-    except Exception as e:
-        if f"alias {alias} not found" in str(e):
+        return client.get_model_version_by_alias(model_name, alias)
+    except MlflowException as e:
+        if "not found" in str(e).lower():
+            logger.warning(f"Alias '{alias}' not found for model '{model_name}'")
             return None
-        raise (e)
-    return alias_mv
+        logger.error(f"Error accessing model registry: {str(e)}")
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}")
+        raise
 
 
 if __name__ == "__main__":
