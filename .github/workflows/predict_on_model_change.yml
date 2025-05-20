@@ -43,13 +43,13 @@ jobs:
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
         run: |
           mlflow artifacts log-artifact \
-            --local-path models/cholesterol-pred-bclass.cbm \
+            --local-file models/cholesterol-pred-bclass.cbm \
             --artifact-path models
 
       - name: Verify model path
         run: |
           ls -lah models/cholesterol-pred-bclass.cbm
-          echo "Model path: $PWD/models/cholesterol-pred-bclass.cbm"
+          test -f models/cholesterol-pred-bclass.cbm || exit 1
 
       - name: Upload processed data
         uses: actions/upload-artifact@v4
