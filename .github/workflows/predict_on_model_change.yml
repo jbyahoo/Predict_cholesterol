@@ -12,8 +12,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  jobs:
-  preprocess:
+  preprocess:  # Fixed: Removed duplicate "jobs" declaration
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -39,6 +38,13 @@ jobs:
       - name: Run preprocessing
         run: make preprocess
 
+      - name: Upload processed data  # Added missing artifact upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: processed-data
+          path: data/processed
+          retention-days: 3
+
   predict:
     runs-on: ubuntu-latest
     needs: preprocess
@@ -54,6 +60,9 @@ jobs:
           name: processed-data
           path: data/processed
 
+      - name: Verify downloaded files  # Added verification step
+        run: ls -lah data/processed
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with: 
@@ -61,10 +70,6 @@ jobs:
 
       - name: Install dependencies
         run: make requirements
-
-      - name: List files in processed directory (debug)
-        run: |
-          ls -alh data/processed
 
       - name: Resolve challenge
         env:
@@ -85,18 +90,18 @@ jobs:
         with:
           name: predictions
           path: models/preds.csv
+          retention-days: 3
 
       - name: Install Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 
       - name: Upload model to Azure Storage
         env: 
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
           AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
           AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
         run: |
           az storage blob upload \
-          --file models/preds.csv \
-          --container-name "$AZURE_STORAGE_CONTAINER" \
-          --name "predictions/preds.csv" \
-          --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
+            --file models/preds.csv \
+            --container-name "$AZURE_STORAGE_CONTAINER" \
+            --name "predictions/preds.csv" \
+            --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
