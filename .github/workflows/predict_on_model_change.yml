@@ -12,6 +12,7 @@ on:
   workflow_dispatch:
 
 jobs:
+  jobs:
   preprocess:
     runs-on: ubuntu-latest
     steps:
@@ -26,26 +27,17 @@ jobs:
       - name: Install dependencies
         run: make requirements
 
-      - name: Create kaggle directory
-        env: 
+      - name: Configure Kaggle credentials
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
-          mkdir -p $HOME/.config/kaggle
-          echo "$KAGGLE_KEY" > $HOME/.config/kaggle/kaggle.json
-          chmod 600 $HOME/.config/kaggle/kaggle.json
+          mkdir -p ~/.kaggle
+          echo '{"username":"'$KAGGLE_USERNAME'","key":"'$KAGGLE_KEY'"}' > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
 
       - name: Run preprocessing
         run: make preprocess
-
-      - name: List files in processed directory (debug)
-        run: |
-          ls -alh data/processed
-
-      - name: Upload preprocessed data
-        uses: actions/upload-artifact@v4
-        with:
-          name: processed-data
-          path: data/processed
 
   predict:
     runs-on: ubuntu-latest
