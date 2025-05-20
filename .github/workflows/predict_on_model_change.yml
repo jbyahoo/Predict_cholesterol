@@ -18,29 +18,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Create directories
+        run: |
+          mkdir -p data/raw
+          mkdir -p data/processed
+
       - name: Set up Python
         uses: actions/setup-python@v4
         with: 
           python-version: "3.11"
 
-      - name: Install dependencies
-        run: |
-          pip install kaggle pandas  # Add required packages
+      - name: Install Kaggle API
+        run: pip install kaggle
 
       - name: Configure Kaggle credentials
         env:
           KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
-          mkdir -p ~/.kaggle
-          echo '{"username":"$KAGGLE_USERNAME","key":"$KAGGLE_KEY"}' > ~/.kaggle/kaggle.json
-          chmod 600 ~/.kaggle/kaggle.json
-          echo "KAGGLE_CONFIG_DIR=~/.kaggle" >> $GITHUB_ENV
+          mkdir -p "$HOME/.kaggle"
+          echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > "$HOME/.kaggle/kaggle.json"
+          chmod 600 "$HOME/.kaggle/kaggle.json"
+          echo "KAGGLE_CONFIG_DIR=$HOME/.kaggle" >> $GITHUB_ENV
 
       - name: Download dataset
         run: |
           kaggle datasets download -d joannborkowska/cholesterol-supplementation-classification -p data/raw/
           unzip data/raw/*.zip -d data/raw/
 
-      - name: Run preprocessing
-        run: python -m ARISA_DSML.preproc
+      - name: Verify download
+        run: ls -la data/raw/
