@@ -8,7 +8,7 @@ on:
       - 'data/raw/test_cholesterol.xlsx'
       - 'data/processed/test_cholesterol.xlsx'
       - 'ARISA_DSML/predict.py'
-      - 'models/catboost_model_cholesterol.cbm'
+      - 'models/cholesterol-pred-bclass.cbm'
   workflow_dispatch:
 
 jobs:
