@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  preprocess:  # Fixed: Removed duplicate "jobs" declaration
+  preprocess:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -38,7 +38,20 @@ jobs:
       - name: Run preprocessing
         run: make preprocess
 
-      - name: Upload processed data  # Added missing artifact upload
+      - name: Log model to MLflow
+        env: 
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+        run: |
+          mlflow artifacts log-artifact \
+            --local-path models/cholesterol-pred-bclass.cbm \
+            --artifact-path models
+
+      - name: Verify model path
+        run: |
+          ls -lah models/cholesterol-pred-bclass.cbm
+          echo "Model path: $PWD/models/cholesterol-pred-bclass.cbm"
+
+      - name: Upload processed data
         uses: actions/upload-artifact@v4
         with:
           name: processed-data
@@ -60,7 +73,7 @@ jobs:
           name: processed-data
           path: data/processed
 
-      - name: Verify downloaded files  # Added verification step
+      - name: Verify downloaded files
         run: ls -lah data/processed
 
       - name: Set up Python
@@ -76,7 +89,9 @@ jobs:
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
           AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
           AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-        run: make resolve
+        run: |
+          mlflow experiments create -n cholesterol-pred 2>/dev/null || true
+          make resolve
 
       - name: Predict on test data
         env:
@@ -84,6 +99,9 @@ jobs:
           AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
           AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
         run: make predict
+
+      - name: Verify predictions
+        run: ls -lah models/preds.csv
 
       - name: Upload predictions
         uses: actions/upload-artifact@v4
@@ -103,5 +121,5 @@ jobs:
           az storage blob upload \
             --file models/preds.csv \
             --container-name "$AZURE_STORAGE_CONTAINER" \
-            --name "predictions/preds.csv" \
+            --name "predictions/$(date +%Y-%m-%d)/preds.csv" \
             --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
