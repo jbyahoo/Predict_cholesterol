@@ -240,7 +240,7 @@ def get_or_create_experiment(experiment_name: str):
     return mlflow.create_experiment(experiment_name)
 
 if __name__ == "__main__":
-    df_train = pd.read_csv(PROCESSED_DATA_DIR / "train.csv")
+    df_train = pd.read_csv(PROCESSED_DATA_DIR / "train_choloesterol.xlsx")
     y_train = df_train.pop(target)
     X_train = df_train
 
