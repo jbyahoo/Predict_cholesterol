@@ -52,7 +52,7 @@ jobs:
 
       - name: Run data preprocessing
         run: |
-          make data_preprocess  # Modified Makefile target
+          make preprocess
 
       - name: Train model
         run: |
