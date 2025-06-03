@@ -1,0 +1,58 @@
+name: Verify Azure Storage Access
+
+on: workflow_dispatch
+
+env:
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}  # Dodaj do GitHub Secrets
+
+jobs:
+  verify-storage:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login with OIDC
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: true
+
+      - name: Test Storage Access
+        run: |
+          # Weryfikacja konta storage
+          az storage account show \
+            --name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --query 'id'
+
+          # Lista kontenerów
+          az storage container list \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --auth-mode login
+
+          # Próba utworzenia testowego pliku
+          echo "Test file" > test.txt
+          
+          # Upload do kontenera
+          az storage blob upload \
+            --account-name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --container-name ${{ env.AZURE_STORAGE_CONTAINER }} \
+            --name test-file.txt \
+            --file test.txt \
+            --auth-mode login
+
+          # Czyszczenie
+          rm test.txt
+
+      - name: Verify Database Connection (optional)
+        if: env.AZURE_DBSERVER
+        run: |
+          # Przykładowe połączenie z bazą danych
+          psql "host=${{ env.AZURE_DBSERVER }} \
+                port=${{ env.AZURE_DBPORT }} \
+                dbname=${{ env.AZURE_DBNAME }} \
+                user=${{ env.AZURE_DBUSERNAME }} \
+                password=${{ secrets.AZURE_DBUSERPASS }}" \
+          -c "SELECT 1;"
