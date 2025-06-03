@@ -49,11 +49,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           make requirements
-
+#preproc
       - name: Run data preprocessing
         run: |
           make preprocess
-
+#train
       - name: Train model
         run: |
           make train
