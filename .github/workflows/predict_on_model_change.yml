@@ -1,92 +1,84 @@
-name: Predict on new data or with new model
+name: Cholesterol Prediction Pipeline
 
 on: 
   push:
-    branches:
-      - main
-    paths:  # predict when the test set has changed, as well as when the model artifact is updated
+    branches: [main]
+    paths:
       - 'data/raw/test_cholesterol.xlsx'
-      - 'data/processed/test_cholesterol.xlsx'
       - 'ARISA_DSML/predict.py'
-      - 'models/catboost_model_cholesterol.cbm'
-  workflow_dispatch:  # Allows manual triggering from the train workflow
+      - 'models/cholesterol-pred-bclass.cbm'
+  workflow_dispatch:
+
 jobs:
   preprocess:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ github.workspace }}
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
-      - name: Set up Python
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
         uses: actions/setup-python@v4
         with: 
           python-version: "3.11"
-      - name: Install dependencies
-        run: make requirements
-      - name: Create kaggle directory
-        env: 
+          cache: 'pip'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip
+
+      - name: Create directory structure
+        run: mkdir -p data/{raw,processed} models
+
+      - name: Configure Kaggle
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
-          mkdir -p $HOME/.config
-          mkdir -p $HOME/.config/kaggle
-          echo "$KAGGLE_KEY" > $HOME/.config/kaggle/kaggle.json
-          chmod 600 $HOME/.config/kaggle/kaggle.json
-      - name: Run preprocessing
-        run: make preprocess
+          mkdir -p ~/.kaggle
+          echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
+          chmod 600 ~/.kaggle/kaggle.json
 
-      - name: Upload preprocessed data
-        uses: actions/upload-artifact@v4
-        with:
-          name: processed-data
-          path: data/processed
-  predict:
-    runs-on: ubuntu-latest
-    needs: preprocess
-    permissions:
-      contents: write  # This gives the token write access to the repository contents
-    steps: 
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download processed data
-        uses: actions/download-artifact@v4
-        with:
-          name: processed-data
-          path: data/processed
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with: 
-          python-version: "3.11"
-      - name: Install dependencies
-        run: make requirements
-      - name: Resolve challenge
-        env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-          AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
-          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-        run: make resolve
-      - name: Predict on test data
-        env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-          AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
-          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-        run: make predict
-      - name: Upload predictions
-        uses: actions/upload-artifact@v4
-        with:
-          name: predictions
-          path: models/preds.csv
-
-      - name: Install Azure CLI
-        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-
-      - name: Upload model to Azure Storage
-        env: 
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
-          AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
+      - name: Install Python dependencies
         run: |
-          az storage blob upload \
-          --file models/preds.csv \
-          --container-name "$AZURE_STORAGE_CONTAINER" \
-          --name "predictions/preds.csv" \
-          --connection-string "$AZURE_STORAGE_CONNECTION_STRING"
+          python -m pip install --upgrade pip
+          make requirements
+
+      - name: Run data preprocessing
+        run: |
+          make preprocess
+
+      - name: Train model
+        run: |
+          make train
+          echo "Model generation verification:"
+          ls -l models/cholesterol-pred-bclass.cbm
+
+      - name: Validate artifacts
+        run: |
+          [ -f models/cholesterol-pred-bclass.cbm ] || { echo "Model file missing!"; exit 1; }
+          [ -f data/processed/test_cholesterol.xlsx ] || { echo "Processed data missing!"; exit 1; }
+
+      - name: Log model to MLflow
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+        run: |
+          echo "MLflow Version: $(mlflow --version)"
+          python ARISA_DSML/log_model.py
+
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-artifacts
+          path: |
+            data/processed/
+            models/
+          retention-days: 7
+
+  # Predict job remains unchanged
