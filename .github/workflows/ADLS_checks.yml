@@ -1,16 +1,25 @@
 name: Verify Azure Storage Access
+on:
+  workflow_dispatch:
 
-on: workflow_dispatch
+permissions:
+  id-token: write
+  contents: read
 
 env:
-  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}  # Dodaj do GitHub Secrets
+  AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVERNAME }}  # Krótka nazwa (np. 'mlopsserverdemo')
+  AZURE_DBNAME: ${{ secrets.AZURE_DBNAME }}
+  AZURE_DBUSERNAME: ${{ secrets.AZURE_DBUSERNAME }}
+  AZURE_DBUSERPASS: ${{ secrets.AZURE_DBUSERPASS }}
+  AZURE_DBRESOURCEGROUP: ${{ secrets.AZURE_DBRESOURCEGROUP }}
+  AZURE_DBCLIENT_ID: ${{ secrets.AZURE_CLIENT_DEV_ID }}
+  AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
 jobs:
   verify-storage:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
 
       - name: Azure Login with OIDC
         uses: azure/login@v1
@@ -18,7 +27,6 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
-          enable-AzPSSession: true
 
       - name: Test Storage Access
         run: |
