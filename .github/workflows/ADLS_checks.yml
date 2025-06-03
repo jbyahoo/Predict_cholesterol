@@ -7,14 +7,12 @@ permissions:
   contents: read
 
 env:
-  AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVERNAME }}  # Krótka nazwa (np. 'mlopsserverdemo')
-  AZURE_DBNAME: ${{ secrets.AZURE_DBNAME }}
-  AZURE_DBUSERNAME: ${{ secrets.AZURE_DBUSERNAME }}
-  AZURE_DBUSERPASS: ${{ secrets.AZURE_DBUSERPASS }}
-  AZURE_DBRESOURCEGROUP: ${{ secrets.AZURE_DBRESOURCEGROUP }}
-  AZURE_DBCLIENT_ID: ${{ secrets.AZURE_CLIENT_DEV_ID }}
+  AZURE_RESOURCE_GROUP: ${{ secrets.AZURE_STORAGE_RESOURCEGROUP }}
+  AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
   AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
   AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  AZURE_STORAGE_ACCOUNT: ${{secrets.AZURE_STORAGE_ACCOUNT }}
+  AZURE_STORAGE_CONTAINER: ${{secrets.AZURE_STORAGE_CONTAINER }}
 
 jobs:
   verify-storage:
@@ -33,6 +31,7 @@ jobs:
           # Weryfikacja konta storage
           az storage account show \
             --name ${{ env.AZURE_STORAGE_ACCOUNT }} \
+            --resource-group "$AZURE_RESOURCE_GROUP" \
             --query 'id'
 
           # Lista kontenerów
@@ -53,14 +52,3 @@ jobs:
 
           # Czyszczenie
           rm test.txt
-
-      - name: Verify Database Connection (optional)
-        if: env.AZURE_DBSERVER
-        run: |
-          # Przykładowe połączenie z bazą danych
-          psql "host=${{ env.AZURE_DBSERVER }} \
-                port=${{ env.AZURE_DBPORT }} \
-                dbname=${{ env.AZURE_DBNAME }} \
-                user=${{ env.AZURE_DBUSERNAME }} \
-                password=${{ secrets.AZURE_DBUSERPASS }}" \
-          -c "SELECT 1;"
