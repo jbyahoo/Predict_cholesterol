@@ -9,6 +9,8 @@ import pandas as pd
 import plotly.graph_objects as go
 from sklearn.metrics import f1_score, log_loss
 from sklearn.model_selection import train_test_split
+from azure.identity import DefaultAzureCredential
+import os
 
 from ARISA_DSML.config import (
     FIGURES_DIR,
@@ -20,7 +22,14 @@ from ARISA_DSML.config import (
 from ARISA_DSML.helpers import get_git_commit_hash
 import nannyml as nml
 
-mlflow.set_tracking_uri("wasbs://mlflowlogs@mlflowstorageaccountjb.blob.core.windows.net/mlruns")
+SQL_CONNECTION_STRING = (
+    f"mssql+pyodbc://{os.environ['AZURE_DBUSERNAME']}:{os.environ['AZURE_DBUSERPASS']}@{os.environ['AZURE_DBSERVERNAME']}.database.windows.net:1433/{os.environ['AZURE_DBNAME']}"
+    "?driver=ODBC+Driver+17+for+SQL+Server"
+)
+mlflow.set_tracking_uri(SQL_CONNECTION_STRING)
+
+credential = DefaultAzureCredential()
+
 
 def run_hyperopt(X_train: pd.DataFrame, y_train: pd.DataFrame, test_size: float = 0.25, n_trials: int = 20, overwrite: bool = False) -> str | Path:
     best_params_path = MODELS_DIR / "best_params.pkl"

@@ -6,7 +6,7 @@
             "VARIANT": "9.0"
         }
     },
-    "postCreateCommand": "pip install --no-cache-dir mlflow==2.12.1 loguru kaggle pyodbc azure-identity azure-storage-blob dotnet --list-sdks && pip install -r requirements.txt && dotnet --version",
+    "postCreateCommand": "pip install --no-cache-dir ipykernel jupyter mlflow==2.12.1 loguru kaggle pyodbc azure-identity azure-storage-blob && python -m ipykernel install --user && pip install -r requirements.txt && dotnet --list-sdks && dotnet --version",
     "postStartCommand": "mlflow ui --backend-store-uri 'mssql+pymssql://${AZURE_DBUSERNAME}:${AZURE_DBUSERPASS}@${AZURE_DBSERVER}:${AZURE_DBPORT}/${AZURE_DBNAME}' --default-artifact-root wasbs://${AZURE_STORAGE_CONTAINER}@${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/mlflowlogs --host 0.0.0.0 --port 5000",
     "forwardPorts": [5000, 8080],
     "customizations": {
@@ -16,6 +16,7 @@
                 "ms-dotnettools.dotnet-interactive-vscode",
                 "ms-azuretools.vscode-docker",
                 "ms-python.python",
+                "ms-toolsai.jupyter",
                 "github.copilot",
                 "github.copilot-chat"
             ]
