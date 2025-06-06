@@ -20,7 +20,7 @@ from ARISA_DSML.config import (
 from ARISA_DSML.helpers import get_git_commit_hash
 import nannyml as nml
 
-mlflow.set_tracking_uri("http://127.0.0.1:5000")
+mlflow.set_tracking_uri("wasbs://mlflowlogs@mlflowstorageaccountjb.blob.core.windows.net/mlruns")
 
 def run_hyperopt(X_train: pd.DataFrame, y_train: pd.DataFrame, test_size: float = 0.25, n_trials: int = 20, overwrite: bool = False) -> str | Path:
     best_params_path = MODELS_DIR / "best_params.pkl"
