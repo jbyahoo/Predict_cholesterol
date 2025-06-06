@@ -16,6 +16,17 @@ jobs:
       run:
         shell: bash
         working-directory: ${{ github.workspace }}
+    env:
+      AZURE_STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+      AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
+      AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVER }}
+      AZURE_DBNAME: ${{ secrets.AZURE_DBNAME }}
+      AZURE_DBUSERNAME: ${{ secrets.AZURE_DBUSERNAME }}
+      AZURE_DBUSERPASS: ${{ secrets.AZURE_DBUSERPASS }}
+      AZURE_DBPORT: ${{ secrets.AZURE_DBPORT || '1433' }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -53,6 +64,14 @@ jobs:
       - name: Run data preprocessing
         run: |
           make preprocess
+      - name: Run MLflow server
+        run: |
+          SQL_CONNECTION_STRING="mssql+pyodbc://${{ env.AZURE_SQL_USERNAME }}:${{ env.AZURE_SQL_PASSWORD }}@${{ env.AZURE_SQL_SERVER }}:${{ env.AZURE_SQL_PORT }}/${{ env.AZURE_SQL_DBNAME }}?driver=ODBC+Driver+17+for+SQL+Server"
+        
+          mlflow server \
+          --backend-store-uri "$SQL_CONNECTION_STRING" \
+          --default-artifact-root "wasbs://${{ env.AZURE_STORAGE_CONTAINER }}@${{ env.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/mlruns" \
+          --host 0.0.0.0 --port 5000 &
 #train
       - name: Train model
         run: |
