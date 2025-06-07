@@ -57,7 +57,7 @@ jobs:
 
       - name: Connect to SQL Database with Managed Identity
         run: |
-          sqlcmd -S "${{ env.AZURE_DBSERVER }}.database.windows.net" \
+          sqlcmd -S "${{ env.AZURE_DBSERVERNAME }}.database.windows.net" \
             -d "${{ env.AZURE_DBNAME }}" \
             -U "${{ env.AZURE_DBUSERNAME }}" \
             -P "${{ env.AZURE_DBUSERPASS }}" \
