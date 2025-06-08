@@ -86,4 +86,32 @@ As mentioned above ADLS was used for this purpose. There was a configuration on 
 
 ### GitHub Secrets setup
 
+There should the following pieces of information be given:
+
+- Access key (from the github-actions-runner user security credentials)
+- Secret access key (from the github-actions-runner user security credentials)
+- Kaggle key (contents of kaggle.json, from earlier sessions or create a new one)
+- ADLS name and container name
+
+Add all of these to your repository's Codespaces secrets with the names:
+
+AZURE_TENANT_ID
+AZURE_CLIENT_ID
+AZURE_SUBSCRIPTION_ID
+
+AZURE_STORAGE_ACCOUNT
+AZURE_STORAGE_CONTAINER
+
+AZURE_DBSERVER
+AZURE_DBNAME
+AZURE_DBUSERNAME
+AZURE_DBUSERPASS
+
+KAGGLE_USERNAME
+KAGGLE_KEY
+
+Add the same also to your repository's Actions secrets.
+
+
+
 
