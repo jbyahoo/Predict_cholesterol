@@ -113,14 +113,20 @@ jobs:
         env:
           AZURE_STORAGE_ACCESS_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
           AZURE_STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
-    
+
       - name: Azure login
         uses: azure/login@v2
         with:
-          client-id: ${{ env.AZURE_CLIENT_ID }}
-          tenant-id: ${{ env.AZURE_TENANT_ID }}
-          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
-          auth-type: oidc
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          auth-type: federated
+          enable-AzPSSession: true
+
+      - name: Verify Azure login
+        run: |
+          az account show
+          az storage account show --name ${{ env.AZURE_STORAGE_ACCOUNT }}
 
       - name: Run data preprocessing
         run: |
