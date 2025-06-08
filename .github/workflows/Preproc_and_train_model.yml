@@ -8,18 +8,19 @@ on:
       - 'ARISA_DSML/predict.py'
       - 'models/cholesterol-pred-bclass.cbm'
   workflow_dispatch:
-permissions:
-  id-token: write  # Wymagane dla autentykacji przez GitHub OIDC
-  contents: read    # Wymagane do checkoutu kodu  
 
 jobs:
   preprocess:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write      # Wymagane dla OIDC
+      contents: read       # Wymagane do checkoutu kodu
 
     defaults:
       run:
         shell: bash
         working-directory: ${{ github.workspace }}
+
     env:
       AZURE_STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
       AZURE_STORAGE_CONTAINER: ${{ secrets.AZURE_STORAGE_CONTAINER }}
@@ -30,7 +31,8 @@ jobs:
       AZURE_DBPORT: ${{ secrets.AZURE_DBPORT }}
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -88,15 +90,12 @@ jobs:
       
       - name: Verify ODBC driver installation
         run: |
-          # Sprawdź czy sterownik jest widoczny przez odbcinst
           if ! odbcinst -q -d -n "ODBC Driver 18 for SQL Server"; then
             echo "❌ ODBC Driver 18 NOT found!"
             exit 1
           else
             echo "✅ ODBC Driver 18 verified"
           fi
-      
-          # Sprawdź czy Python widzi sterownik
           if ! python -c "import pyodbc; print('Drivers:', pyodbc.drivers())"; then
             echo "❌ Python/pyodbc problem!"
             exit 1
@@ -107,7 +106,6 @@ jobs:
       - name: Run MLflow server
         run: |
           SQL_CONNECTION_STRING="mssql+pyodbc://${{ env.AZURE_DBUSERNAME }}:${{ env.AZURE_DBUSERPASS }}@${{ env.AZURE_DBSERVER }}:${{ env.AZURE_DBPORT }}/${{ env.AZURE_DBNAME }}?Encrypt=yes&TrustServerCertificate=no&driver=ODBC+Driver+18+for+SQL+Server"
-          
           mlflow server \
             --backend-store-uri "$SQL_CONNECTION_STRING" \
             --default-artifact-root "wasbs://${{ env.AZURE_STORAGE_CONTAINER }}@${{ env.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/mlruns" \
@@ -119,15 +117,15 @@ jobs:
       - name: Azure login
         uses: azure/login@v2
         with:
-          client-id: ${{ env.AZURE_DBCLIENT_ID }}
+          client-id: ${{ env.AZURE_CLIENT_ID }}
           tenant-id: ${{ env.AZURE_TENANT_ID }}
           subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+          auth-type: oidc
 
-#preproc
       - name: Run data preprocessing
         run: |
           make preprocess
-#train
+
       - name: Train model
         run: |
           make train
@@ -154,5 +152,3 @@ jobs:
             data/processed/
             models/
           retention-days: 7
-
-  # Predict job remains unchanged
