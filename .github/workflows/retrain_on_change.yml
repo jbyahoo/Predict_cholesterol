@@ -116,7 +116,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           pip install mlflow==2.13.1 azure-storage-blob==12.19.1
-          pip install catboost optuna
+          pip install loguru kaggle dotenv openpyxl catboost optuna azure-identity azure-storage-blob nannyml traitlets IPython ipywidgets
 
       - name: Run training
         run: |
