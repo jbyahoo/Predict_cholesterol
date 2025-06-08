@@ -12,6 +12,9 @@ on:
 jobs:
   preprocess:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Wymagane dla autentykacji przez GitHub OIDC
+      contents: read    # Wymagane do checkoutu kodu
     defaults:
       run:
         shell: bash
