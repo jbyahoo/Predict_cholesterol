@@ -4,14 +4,14 @@
     <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
 </a>
 
-Predicting cholesterol issues
+Predicting cholesterol project is the project that serves implementing MLOps purpose. In the project organization there is the repo structure is described.
 
 ## Project Organization
 
 ```
 ├── LICENSE            <- Open-source license if one is chosen
 ├── Makefile           <- Makefile with convenience commands like `make data` or `make train`
-├── README.md          <- The top-level README for developers using this project.
+├── README.md          <- The top-level README for developers (also about the solution architectre) using this project.
 ├── data
 │   ├── external       <- Data from third party sources.
 │   ├── interim        <- Intermediate data that has been transformed.
@@ -58,4 +58,20 @@ Predicting cholesterol issues
 ```
 
 --------
+
+## Prerequisites
+
+## MLOps Architecture
+The repo code implements the general MLOps architecture in the below diagram:
+![alt text](image.png)
+
+(source https://ml-ops.org/content/mlops-principles) More specifically, an MLflow tracking server is hosted in a Codespace, and running the two pipelines in GitHub Actions Workflows, see architecture below:
+![alt text](image-1.png)
+![alt text](image-2.png)
+
+The main change comparing to the originally proposed solution is that the Mlflow Artifacts and Metadata are stored in Azure Cloud (ADLS and Azure SQL Database) .
+
+## Getting the architecture up and running
+
+
 

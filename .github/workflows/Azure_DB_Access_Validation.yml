@@ -8,7 +8,8 @@ permissions:
   contents: read
 
 env:
-  AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVERNAME }}  # Krótka nazwa (np. 'mlopsserverdemo')
+  AZURE_DBSERVERNAME: ${{ secrets.AZURE_DBSERVERNAME }}  # Krótka nazwa (np. 'mlopsserverdemo')
+  AZURE_DBSERVER: ${{ secrets.AZURE_DBSERVER }} 
   AZURE_DBNAME: ${{ secrets.AZURE_DBNAME }}
   AZURE_DBUSERNAME: ${{ secrets.AZURE_DBUSERNAME }}
   AZURE_DBUSERPASS: ${{ secrets.AZURE_DBUSERPASS }}
@@ -43,7 +44,7 @@ jobs:
         with:
           inlineScript: |
             az sql server show \
-              --name ${{ env.AZURE_DBSERVER }} \
+              --name ${{ env.AZURE_DBSERVERNAME }} \
               --resource-group ${{ env.AZURE_DBRESOURCEGROUP }}
 
       - name: List SQL Databases
@@ -51,12 +52,12 @@ jobs:
         with:
           inlineScript: |
             az sql db list \
-              --server ${{ env.AZURE_DBSERVER }} \
+              --server ${{ env.AZURE_DBSERVERNAME }} \
               --resource-group ${{ env.AZURE_DBRESOURCEGROUP }}
 
       - name: Connect to SQL Database with Managed Identity
         run: |
-          sqlcmd -S "${{ env.AZURE_DBSERVER }}.database.windows.net" \
+          sqlcmd -S "${{ env.AZURE_DBSERVERNAME }}.database.windows.net" \
             -d "${{ env.AZURE_DBNAME }}" \
             -U "${{ env.AZURE_DBUSERNAME }}" \
             -P "${{ env.AZURE_DBUSERPASS }}" \
