@@ -80,7 +80,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install mlflow==2.13.1 pyodbc==4.0.39 azure-storage-blob==12.19.1
-          pip install loguru kaggle dotenv openpyxl catboost optuna azure-identity azure-storage-blob
+          pip install loguru kaggle dotenv openpyxl catboost optuna azure-identity azure-storage-blob nannyml
       
       - name: Verify ODBC driver installation
         run: |
