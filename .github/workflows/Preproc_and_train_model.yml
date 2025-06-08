@@ -23,7 +23,7 @@ jobs:
       AZURE_DBNAME: ${{ secrets.AZURE_DBNAME }}
       AZURE_DBUSERNAME: ${{ secrets.AZURE_DBUSERNAME }}
       AZURE_DBUSERPASS: ${{ secrets.AZURE_DBUSERPASS }}
-      AZURE_DBPORT: ${{ secrets.AZURE_DBPORT || '1433' }}
+      AZURE_DBPORT: ${{ secrets.AZURE_DBPORT }}
       AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
@@ -56,22 +56,41 @@ jobs:
           echo "{\"username\":\"$KAGGLE_USERNAME\",\"key\":\"$KAGGLE_KEY\"}" > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
 
+      - name: Install ODBC dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl gnupg
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
+          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/22.04/prod jammy main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
+          echo "/opt/mssql-tools18/bin" | sudo tee -a $GITHUB_PATH
+
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           make requirements
+          pip install mlflow pyodbc azure-storage-blob
+
+      - name: Verify ODBC driver installation
+        run: |
+          odbcinst -q -d -n "ODBC Driver 18 for SQL Server"
+          python -c "import pyodbc; print(pyodbc.drivers())"
 #preproc
       - name: Run data preprocessing
         run: |
           make preprocess
       - name: Run MLflow server
         run: |
-          SQL_CONNECTION_STRING="mssql+pyodbc://${{ env.AZURE_DBUSERNAME }}:${{ env.AZURE_DBUSERPASS }}@${{ env.AZURE_DBSERVER }}:${{ env.AZURE_DBPORT }}/${{ env.AZURE_DBNAME }}?driver=ODBC+Driver+17+for+SQL+Server"
+          SQL_CONNECTION_STRING="mssql+pyodbc://${{ env.AZURE_DBUSERNAME }}:${{ env.AZURE_DBUSERPASS }}@${{ env.AZURE_DBSERVER }}:${{ env.AZURE_DBPORT }}/${{ env.AZURE_DBNAME }}?driver=ODBC+Driver+18+for+SQL+Server"
         
           mlflow server \
           --backend-store-uri "$SQL_CONNECTION_STRING" \
           --default-artifact-root "wasbs://${{ env.AZURE_STORAGE_CONTAINER }}@${{ env.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/mlruns" \
           --host 0.0.0.0 --port 5000 &
+
+          env:
+            AZURE_STORAGE_CONNECTION_STRING: "DefaultEndpointsProtocol=https;AccountName=${{ env.AZURE_STORAGE_ACCOUNT }};AccountKey=${{ env.AZURE_STORAGE_KEY }};EndpointSuffix=core.windows.net"
 #train
       - name: Train model
         run: |
