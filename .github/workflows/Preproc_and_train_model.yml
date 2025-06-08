@@ -121,4 +121,39 @@ jobs:
           SQL_CONNECTION_STRING="mssql+pyodbc://${{ env.AZURE_DBUSERNAME }}:${{ env.AZURE_DBUSERPASS }}@${{ env.AZURE_DBSERVER }}:${{ env.AZURE_DBPORT }}/${{ env.AZURE_DBNAME }}?Encrypt=yes&TrustServerCertificate=no&driver=ODBC+Driver+18+for+SQL+Server"
           mlflow server \
             --backend-store-uri "$SQL_CONNECTION_STRING" \
-            --default-artifact-root "wasbs://${{ env.AZURE_STORAGE_CONTAINER }}@${{ env.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net
+            --default-artifact-root "wasbs://${{ env.AZURE_STORAGE_CONTAINER }}@${{ env.AZURE_STORAGE_ACCOUNT }}.blob.core.windows.net/mlruns" \
+            --host 0.0.0.0 --port 5000 &
+        env:
+          AZURE_STORAGE_ACCESS_KEY: ${{ secrets.AZURE_STORAGE_KEY }}
+          AZURE_STORAGE_ACCOUNT: ${{ secrets.AZURE_STORAGE_ACCOUNT }}
+
+      - name: Run data preprocessing
+        run: |
+          make preprocess
+
+      - name: Train model
+        run: |
+          make train
+          echo "Model generation verification:"
+          ls -l models/cholesterol-pred-bclass.cbm
+
+      - name: Validate artifacts
+        run: |
+          [ -f models/cholesterol-pred-bclass.cbm ] || { echo "Model file missing!"; exit 1; }
+          [ -f data/processed/test_cholesterol.xlsx ] || { echo "Processed data missing!"; exit 1; }
+
+      - name: Log model to MLflow
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+        run: |
+          echo "MLflow Version: $(mlflow --version)"
+          python ARISA_DSML/log_model.py
+
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-artifacts
+          path: |
+            data/processed/
+            models/
+          retention-days: 7
