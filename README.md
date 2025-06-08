@@ -73,5 +73,17 @@ The main change comparing to the originally proposed solution is that the Mlflow
 
 ## Getting the architecture up and running
 
+At the beginning, the author wanted to use the dataset which was exposed by the another teacher on other lecture. Therefore new dataset was added to the kaggle account and it was used to train the model. Training itself isn't sophisticated but the idea was to have the whole workflow up and running.
+
+Since we will be using Azure Storage Account (ADLS Gen2) to host the MLflow artifact stor, there will be a need to create and set this up in Azure.
+There could be the Azure Free subsription for students used for this purpose. Because this subscription is the university one, the regular user doesn't have access to the MS Entra and therefore it's not possible to make the app registration but the user assigned managed identity with federation was used for this purpose. There was a need to create the UAMI, add him access to the proper resources (ADLS & Azure SQL DB) and create federations for the current repository. 
+
+### Metadata store database
+Azure SQL DB was used to run the MLFlow instance
+
+### Artifact store
+As mentioned above ADLS was used for this purpose. There was a configuration on the IAM done so that UAMI is the Storage Contributor (it has permissions to write to the storage)
+
+### GitHub Secrets setup
 
 
