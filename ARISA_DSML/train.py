@@ -22,11 +22,6 @@ from ARISA_DSML.config import (
 from ARISA_DSML.helpers import get_git_commit_hash
 import nannyml as nml
 
-SQL_CONNECTION_STRING = (
-    f"mssql+pyodbc://{os.environ['AZURE_DBUSERNAME']}:{os.environ['AZURE_DBUSERPASS']}@{os.environ['AZURE_DBSERVERNAME']}.database.windows.net:1433/{os.environ['AZURE_DBNAME']}"
-    "?driver=ODBC+Driver+17+for+SQL+Server"
-)
-mlflow.set_tracking_uri(SQL_CONNECTION_STRING)
 
 credential = DefaultAzureCredential()
 
