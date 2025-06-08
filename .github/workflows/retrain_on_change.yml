@@ -10,6 +10,7 @@ on:
       - 'ARISA_DSML/preproc.py'
       - 'ARISA_DSML/train.py'
       - 'models/best_params.pkl'
+  workflow_dispatch:
 
 jobs:
   preprocess:
