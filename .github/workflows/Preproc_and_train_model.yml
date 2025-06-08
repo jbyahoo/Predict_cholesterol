@@ -59,12 +59,21 @@ jobs:
       - name: Install ODBC dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y curl gnupg
+          sudo apt-get install -y curl gnupg unixodbc-dev
           curl https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft.gpg
           echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/22.04/prod jammy main" | sudo tee /etc/apt/sources.list.d/mssql-release.list
           sudo apt-get update
-          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 unixodbc-dev
-          echo "/opt/mssql-tools18/bin" | sudo tee -a $GITHUB_PATH
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18
+          echo "export PATH=$PATH:/opt/mssql-tools18/bin" | sudo tee -a /etc/profile
+
+      - name: Configure ODBC
+        run: |
+          cat <<EOF | sudo tee /etc/odbcinst.ini
+          [ODBC Driver 18 for SQL Server]
+          Description=Microsoft ODBC Driver 18 for SQL Server
+          Driver=/opt/microsoft/msodbcsql18/lib64/libmsodbcsql-18.5.so.1.1
+          UsageCount=1
+          EOF
 
       - name: Install Python dependencies
         run: |
