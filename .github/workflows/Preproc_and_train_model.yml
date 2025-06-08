@@ -81,12 +81,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install mlflow==2.13.1 pyodbc==4.0.39 azure-storage-blob==12.19.1
       
-      - name: Verify environment
+      - name: Verify ODBC driver installation
         run: |
-          odbcinst -q -d -n "ODBC Driver 18 for SQL Server"
-          python -c "import pyodbc; print(pyodbc.drivers())"
-          which sqlcmd
+          # Sprawdź czy sterownik jest widoczny przez odbcinst
+          if ! odbcinst -q -d -n "ODBC Driver 18 for SQL Server"; then
+            echo "❌ ODBC Driver 18 NOT found!"
+            exit 1
+          else
+            echo "✅ ODBC Driver 18 verified"
+          fi
       
+          # Sprawdź czy Python widzi sterownik
+          if ! python -c "import pyodbc; print('Drivers:', pyodbc.drivers())"; then
+            echo "❌ Python/pyodbc problem!"
+            exit 1
+          else
+            echo "✅ Python/pyodbc OK"
+          fi
+  
       - name: Run MLflow server
         run: |
           SQL_CONNECTION_STRING="mssql+pyodbc://${{ env.AZURE_DBUSERNAME }}:${{ env.AZURE_DBUSERPASS }}@${{ env.AZURE_DBSERVER }}:${{ env.AZURE_DBPORT }}/${{ env.AZURE_DBNAME }}?Encrypt=yes&TrustServerCertificate=no&driver=ODBC+Driver+18+for+SQL+Server"
