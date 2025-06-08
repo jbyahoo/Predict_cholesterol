@@ -68,7 +68,8 @@ jobs:
         run: az account show
 
       - name: Create kaggle directory
-        env: 
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
           KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
           mkdir -p ~/.kaggle
