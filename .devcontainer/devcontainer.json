@@ -7,7 +7,7 @@
         }
     },
     "postCreateCommand": "pip install --no-cache-dir ipykernel jupyter mlflow==2.12.1 loguru kaggle pyodbc azure-identity azure-storage-blob && python -m ipykernel install --user && pip install -r requirements.txt && dotnet --list-sdks && dotnet --version",
-    "postStartCommand": "mlflow ui --backend-store-uri 'mssql+pymssql://${AZURE_DBUSERNAME}:${AZURE_DBUSERPASS}@${AZURE_DBSERVER}:${AZURE_DBPORT}/${AZURE_DBNAME}' --default-artifact-root wasbs://${AZURE_STORAGE_CONTAINER}@${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/mlflowlogs --host 0.0.0.0 --port 5000",
+    "postStartCommand": "mlflow ui --backend-store-uri 'mssql+pyodbc://${AZURE_DBUSERNAME}:${AZURE_DBUSERPASS}@${AZURE_DBSERVER},${AZURE_DBPORT}/${AZURE_DBNAME}?driver=ODBC+Driver+17+for+SQL+Server' --default-artifact-root wasbs://${AZURE_STORAGE_CONTAINER}@${AZURE_STORAGE_ACCOUNT}.blob.core.windows.net/mlflowlogs --host 0.0.0.0 --port 5000",
     "forwardPorts": [5000, 8080],
     "customizations": {
         "vscode": {
