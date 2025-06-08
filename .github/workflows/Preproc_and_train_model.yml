@@ -8,13 +8,14 @@ on:
       - 'ARISA_DSML/predict.py'
       - 'models/cholesterol-pred-bclass.cbm'
   workflow_dispatch:
+permissions:
+  id-token: write  # Wymagane dla autentykacji przez GitHub OIDC
+  contents: read    # Wymagane do checkoutu kodu  
 
 jobs:
   preprocess:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write  # Wymagane dla autentykacji przez GitHub OIDC
-      contents: read    # Wymagane do checkoutu kodu
+
     defaults:
       run:
         shell: bash
