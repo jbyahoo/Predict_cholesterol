@@ -4,8 +4,11 @@
     <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
 </a>
 
-Predicting cholesterol issues
+Predicting cholesterol project is the project that serves implementing MLOps purpose
 
+## Prerequisites
+
+## MLOps Architecture
 ## Project Organization
 
 ```
